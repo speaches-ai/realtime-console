@@ -37,6 +37,8 @@ export default function App() {
     currentSessionId,
     conversationSessions,
     addConversationSession,
+    isSessionActive,
+    stopSession,
   } = useStore();
   
   // State for sidebar visibility
@@ -255,6 +257,11 @@ export default function App() {
         
         // Only create a new conversation if the current one has events
         if (events.length > 0 || conversation.items.size > 0) {
+          // Stop current session if active
+          if (isSessionActive) {
+            stopSession();
+          }
+          
           // Create a new conversation session
           addConversationSession({
             title: `New Conversation ${new Date().toLocaleString()}`
@@ -277,7 +284,9 @@ export default function App() {
     addConversationSession, 
     clearEvents,
     events.length,
-    conversation.items.size
+    conversation.items.size,
+    isSessionActive,
+    stopSession
   ]);
   
   // Load conversation data when currentSessionId changes

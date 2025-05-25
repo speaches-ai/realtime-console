@@ -9,7 +9,9 @@ export function ConversationSidebar() {
     setCurrentSessionId, 
     deleteConversationSession,
     updateConversationSession,
-    addConversationSession
+    addConversationSession,
+    isSessionActive,
+    stopSession
   } = useStore();
   
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
@@ -68,10 +70,15 @@ export function ConversationSidebar() {
   
   const handleAddSession = () => {
     // Get current state to check if the conversation is empty
-    const { events, conversation } = useStore.getState();
+    const { events, conversation, isSessionActive, stopSession } = useStore.getState();
     
     // Only create a new conversation if the current one has events or messages
     if (events.length > 0 || conversation.items.size > 0) {
+      // Stop current session if active
+      if (isSessionActive) {
+        stopSession();
+      }
+      
       addConversationSession({
         title: `New Conversation ${new Date().toLocaleString()}`
       });
@@ -107,7 +114,18 @@ export function ConversationSidebar() {
           sortedSessions.map((session) => (
             <div
               key={session.id}
-              onClick={() => setCurrentSessionId(session.id)}
+              onClick={() => {
+                // If changing to a different session
+                if (currentSessionId !== session.id) {
+                  // Stop current session if active
+                  if (isSessionActive) {
+                    stopSession();
+                  }
+                  
+                  // Then switch to the selected session
+                  setCurrentSessionId(session.id);
+                }
+              }}
               className={`
                 p-3 border-b cursor-pointer relative
                 hover:bg-gray-100 group
