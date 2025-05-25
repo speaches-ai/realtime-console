@@ -10,8 +10,13 @@ function SessionStopped() {
     setAudioDevices,
     selectedMicrophone,
     setSelectedMicrophone,
+    events,
+    conversation,
   } = useStore();
   const [isActivating, setIsActivating] = useState(false);
+  
+  // Check if this is a conversation that has already ended
+  const hasExistingContent = events.length > 0 || conversation.items.size > 0;
 
   useEffect(() => {
     async function getAudioDevices() {
@@ -49,26 +54,39 @@ function SessionStopped() {
 
   return (
     <div className="flex items-center justify-center w-full h-full gap-4">
-      <Button
-        onClick={handleStartSession}
-        className={isActivating ? "bg-gray-600" : "bg-red-600"}
-        icon={<CloudLightning height={16} />}
-      >
-        {isActivating ? "starting session..." : "start session"}
-      </Button>
-      <select
-        value={selectedMicrophone}
-        onChange={(e) => {
-          setSelectedMicrophone(e.target.value);
-        }}
-        className="border border-gray-200 rounded-md p-2 max-w-[300px] text-ellipsis"
-      >
-        {audioDevices.map((device) => (
-          <option key={device.deviceId} value={device.deviceId}>
-            {device.label || `Microphone ${device.deviceId.slice(0, 8)}...`}
-          </option>
-        ))}
-      </select>
+      {hasExistingContent ? (
+        <div className="text-center">
+          <div className="mb-2 text-gray-600">
+            This conversation has already ended.
+          </div>
+          <div className="text-sm text-gray-500">
+            Create a new conversation (⌘/Ctrl+Shift+O) to start a new session.
+          </div>
+        </div>
+      ) : (
+        <>
+          <Button
+            onClick={handleStartSession}
+            className={isActivating ? "bg-gray-600" : "bg-red-600"}
+            icon={<CloudLightning height={16} />}
+          >
+            {isActivating ? "starting session..." : "start session"}
+          </Button>
+          <select
+            value={selectedMicrophone}
+            onChange={(e) => {
+              setSelectedMicrophone(e.target.value);
+            }}
+            className="border border-gray-200 rounded-md p-2 max-w-[300px] text-ellipsis"
+          >
+            {audioDevices.map((device) => (
+              <option key={device.deviceId} value={device.deviceId}>
+                {device.label || `Microphone ${device.deviceId.slice(0, 8)}...`}
+              </option>
+            ))}
+          </select>
+        </>
+      )}
     </div>
   );
 }
