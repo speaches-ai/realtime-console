@@ -13,12 +13,25 @@ type Tool = {
 };
 
 function mcpToolsToOpenAI(tools: ListToolsResult): Tool[] {
-  return tools.tools.map((tool) => ({
-    type: "function",
-    name: tool.name,
-    description: tool.description,
-    parameters: tool.inputSchema,
-  }));
+  return tools.tools.map((tool) => {
+    // Linear list_users looks like this which OpenAI doesn't seem to support:
+    // {
+    //   name: "list_users",
+    //   description: "Retrieve users in the Linear workspace",
+    //   inputSchema: {
+    //     type: "object",
+    //   },
+    // };
+    return {
+      type: "function",
+      name: tool.name,
+      description: tool.description,
+      parameters:
+        typeof tool.inputSchema.properties !== "undefined"
+          ? tool.inputSchema
+          : {},
+    };
+  });
 }
 
 export function SessionConfiguration() {
