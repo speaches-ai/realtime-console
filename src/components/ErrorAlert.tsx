@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { X } from 'react-feather';
+import { useEffect } from "react";
+import { X } from "react-feather";
 
 interface ErrorAlertProps {
   message: string;
@@ -7,21 +7,25 @@ interface ErrorAlertProps {
   duration?: number; // Auto-dismiss duration in ms (0 means don't auto-dismiss)
 }
 
-export function ErrorAlert({ message, onClose, duration = 5000 }: ErrorAlertProps) {
+export function ErrorAlert({
+  message,
+  onClose,
+  duration = 5000,
+}: ErrorAlertProps) {
   // Auto-dismiss timer
   useEffect(() => {
     if (duration > 0) {
       const timer = setTimeout(() => {
         onClose();
       }, duration);
-      
+
       return () => clearTimeout(timer);
     }
   }, [duration, onClose]);
-  
+
   // Format message as JSON if it looks like JSON
   const formatMessage = (msg: string) => {
-    if (msg.startsWith('{') || msg.startsWith('[')) {
+    if (msg.startsWith("{") || msg.startsWith("[")) {
       try {
         const parsed = JSON.parse(msg);
         return (
@@ -46,7 +50,7 @@ export function ErrorAlert({ message, onClose, duration = 5000 }: ErrorAlertProp
             {formatMessage(message)}
           </div>
         </div>
-        <button 
+        <button
           onClick={onClose}
           className="ml-4 p-1 text-red-500 hover:text-red-700 rounded-full hover:bg-red-100 flex-shrink-0"
           aria-label="Dismiss"
@@ -65,14 +69,14 @@ interface ErrorAlertsProps {
 
 export function ErrorAlerts({ errors, onDismiss }: ErrorAlertsProps) {
   if (errors.length === 0) return null;
-  
+
   return (
     <>
       {errors.map((error, index) => (
-        <ErrorAlert 
-          key={index} 
-          message={error} 
-          onClose={() => onDismiss(index)} 
+        <ErrorAlert
+          key={index}
+          message={error}
+          onClose={() => onDismiss(index)}
         />
       ))}
     </>

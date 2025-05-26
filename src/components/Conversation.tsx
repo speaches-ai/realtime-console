@@ -145,7 +145,7 @@ export class Conversation {
 
   constructor(initialItems?: Record<string, ConversationItem>) {
     this.items = new Map();
-    
+
     // Load initial items if provided
     if (initialItems) {
       Object.entries(initialItems).forEach(([id, item]) => {
@@ -153,7 +153,7 @@ export class Conversation {
       });
     }
   }
-  
+
   // Save conversation items to a serializable format
   serialize(): Record<string, ConversationItem> {
     const serialized: Record<string, ConversationItem> = {};
@@ -218,12 +218,12 @@ export class Conversation {
       console.error("Cannot add delta to item reference content");
     }
   }
-  
+
   // Register a callback for updates
   setUpdateListener(callback: () => void) {
     this.onUpdate = callback;
   }
-  
+
   // Notify when the conversation has been updated
   private notifyUpdate() {
     if (this.onUpdate) {

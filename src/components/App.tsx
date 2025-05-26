@@ -8,7 +8,11 @@ import { Settings } from "./Settings";
 import { PromptList } from "./PromptList";
 import { ConversationSidebar } from "./ConversationSidebar";
 import { ErrorAlerts } from "./ErrorAlert";
-import { conversationItemFromOpenAI, ConversationView, Conversation } from "./Conversation";
+import {
+  conversationItemFromOpenAI,
+  ConversationView,
+  Conversation,
+} from "./Conversation";
 import {
   ConversationItemCreatedEvent,
   ConversationItemInputAudioTranscriptionCompletedEvent,
@@ -40,45 +44,49 @@ export default function App() {
     isSessionActive,
     stopSession,
   } = useStore();
-  
+
   // State for sidebar visibility
   const [showSidebar, setShowSidebar] = useState(true);
-  
+
   // State for error alerts
   const [errorMessages, setErrorMessages] = useState<string[]>([]);
 
   // Handle dismissing errors
   const dismissError = (index: number) => {
-    setErrorMessages(prevErrors => prevErrors.filter((_, i) => i !== index));
+    setErrorMessages((prevErrors) => prevErrors.filter((_, i) => i !== index));
   };
 
   // Listen for all events from the server
   useEffect(() => {
     return realtimeConnection.addAnyEventListener((message) => {
       addEvent(message);
-      
+
       // Check if this is an error event
-      if (message.type && 
-          (message.type === 'error' || 
-           message.type.includes('error') || 
-           message.type.includes('failed'))) {
-        
+      if (
+        message.type &&
+        (message.type === "error" ||
+          message.type.includes("error") ||
+          message.type.includes("failed"))
+      ) {
         // Extract error message based on event structure
-        let errorMessage = 'An error occurred';
-        
-        if ('error' in message && typeof message.error === 'string') {
+        let errorMessage = "An error occurred";
+
+        if ("error" in message && typeof message.error === "string") {
           errorMessage = message.error;
-        } else if ('message' in message && typeof message.message === 'string') {
+        } else if (
+          "message" in message &&
+          typeof message.message === "string"
+        ) {
           errorMessage = message.message;
-        } else if ('reason' in message && typeof message.reason === 'string') {
+        } else if ("reason" in message && typeof message.reason === "string") {
           errorMessage = message.reason;
         } else {
           // If we can't find a specific field, use the whole event
           errorMessage = JSON.stringify(message);
         }
-        
+
         // Add to error messages
-        setErrorMessages(prev => [...prev, errorMessage]);
+        setErrorMessages((prev) => [...prev, errorMessage]);
       }
     });
   }, [realtimeConnection, addEvent]);
@@ -89,13 +97,13 @@ export default function App() {
       if (currentSessionId) {
         const serializedConversation = conversation.serialize();
         useStore.getState().updateConversationSession(currentSessionId, {
-          conversationItems: serializedConversation
+          conversationItems: serializedConversation,
         });
       }
     };
-    
+
     conversation.setUpdateListener(saveConversation);
-    
+
     return () => {
       // Clear the update listener when the component unmounts
       conversation.setUpdateListener(undefined);
@@ -244,29 +252,37 @@ export default function App() {
         e.preventDefault();
         setShowSettings(!showSettings);
       }
-      
+
       // Check for Ctrl/Cmd + Shift + S
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "s") {
+      if (
+        (e.ctrlKey || e.metaKey) &&
+        e.shiftKey &&
+        e.key.toLowerCase() === "s"
+      ) {
         e.preventDefault();
         setShowSidebar(!showSidebar);
       }
-      
+
       // Check for Ctrl/Cmd + Shift + O to create a new conversation
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "o") {
+      if (
+        (e.ctrlKey || e.metaKey) &&
+        e.shiftKey &&
+        e.key.toLowerCase() === "o"
+      ) {
         e.preventDefault();
-        
+
         // Only create a new conversation if the current one has events
         if (events.length > 0 || conversation.items.size > 0) {
           // Stop current session if active
           if (isSessionActive) {
             stopSession();
           }
-          
+
           // Create a new conversation session
           addConversationSession({
-            title: `New Conversation ${new Date().toLocaleString()}`
+            title: `New Conversation ${new Date().toLocaleString()}`,
           });
-          
+
           // Clear the UI
           clearEvents();
           useStore.setState({ conversation: new Conversation() });
@@ -277,51 +293,56 @@ export default function App() {
     window.addEventListener("keydown", handleKeyPress);
     return () => window.removeEventListener("keydown", handleKeyPress);
   }, [
-    setShowSettings, 
-    showSettings, 
-    showSidebar, 
-    setShowSidebar, 
-    addConversationSession, 
+    setShowSettings,
+    showSettings,
+    showSidebar,
+    setShowSidebar,
+    addConversationSession,
     clearEvents,
     events.length,
     conversation.items.size,
     isSessionActive,
-    stopSession
+    stopSession,
   ]);
-  
+
   // Load conversation data when currentSessionId changes
   useEffect(() => {
     if (currentSessionId) {
-      const session = conversationSessions.find(s => s.id === currentSessionId);
+      const session = conversationSessions.find(
+        (s) => s.id === currentSessionId,
+      );
       if (session) {
         // Load events from the selected session
         clearEvents();
-        
+
         // Add all events from the session to the current events list
         if (session.events.length > 0) {
-          session.events.forEach(event => {
+          session.events.forEach((event) => {
             // Use a direct way to set events rather than addEvent to avoid circular updates
             // This will put events in the UI without saving them again to the session
             // @ts-expect-error
-            useStore.setState((state) => ({ 
-              events: [event, ...state.events] 
+            useStore.setState((state) => ({
+              events: [event, ...state.events],
             }));
           });
         }
-        
+
         // Load conversation items if they exist
-        if (session.conversationItems && Object.keys(session.conversationItems).length > 0) {
+        if (
+          session.conversationItems &&
+          Object.keys(session.conversationItems).length > 0
+        ) {
           // Create a new conversation instance with the saved items
           const newConversation = new Conversation(session.conversationItems);
-          
+
           // Update the store with the new conversation
-          useStore.setState({ 
-            conversation: newConversation 
+          useStore.setState({
+            conversation: newConversation,
           });
         } else {
           // Reset to a new conversation if there are no saved items
-          useStore.setState({ 
-            conversation: new Conversation() 
+          useStore.setState({
+            conversation: new Conversation(),
           });
         }
       }
@@ -338,31 +359,41 @@ export default function App() {
       </nav>
       <main className="flex flex-1 overflow-hidden relative">
         {/* Left Sidebar with Conversation History */}
-        <div className={`${showSidebar ? 'w-64' : 'w-0'} transition-all duration-300 ease-in-out overflow-hidden flex-shrink-0`}>
+        <div
+          className={`${showSidebar ? "w-64" : "w-0"} transition-all duration-300 ease-in-out overflow-hidden flex-shrink-0`}
+        >
           <ConversationSidebar />
         </div>
-        
+
         {/* Sidebar Toggle Button */}
-        <div 
+        <div
           className="absolute z-10 group"
-          style={{ 
-            left: showSidebar ? '15.5rem' : '0', 
-            top: '1rem',
-            transition: 'left 0.3s ease-in-out'
+          style={{
+            left: showSidebar ? "15.5rem" : "0",
+            top: "1rem",
+            transition: "left 0.3s ease-in-out",
           }}
         >
-          <button 
-            onClick={() => setShowSidebar(!showSidebar)} 
+          <button
+            onClick={() => setShowSidebar(!showSidebar)}
             className="p-1.5 rounded-r-md bg-gray-200 hover:bg-gray-300 shadow-sm"
-            aria-label={showSidebar ? "Hide conversation sidebar" : "Show conversation sidebar"}
+            aria-label={
+              showSidebar
+                ? "Hide conversation sidebar"
+                : "Show conversation sidebar"
+            }
           >
-            {showSidebar ? <ChevronLeft size={18} /> : <ChevronRight size={18} />}
+            {showSidebar ? (
+              <ChevronLeft size={18} />
+            ) : (
+              <ChevronRight size={18} />
+            )}
           </button>
           <div className="absolute left-full ml-2 top-0 bg-gray-800 text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
             Toggle sidebar (⌘/Ctrl+Shift+S)
           </div>
         </div>
-        
+
         {/* Main Content Area */}
         <section className="flex flex-col flex-1 overflow-y-auto">
           <section className="flex-1 px-4 overflow-y-auto">
@@ -405,7 +436,7 @@ export default function App() {
             <SessionControls />
           </section>
         </section>
-        
+
         {/* Right Sidebar */}
         <section className="w-96 p-4 pt-0 overflow-y-auto border-l">
           <SessionConfiguration />
@@ -415,7 +446,7 @@ export default function App() {
         </section>
       </main>
       {showSettings && <Settings />}
-      
+
       {/* Error Alerts */}
       <ErrorAlerts errors={errorMessages} onDismiss={dismissError} />
     </div>

@@ -14,7 +14,7 @@ function SessionStopped() {
     conversation,
   } = useStore();
   const [isActivating, setIsActivating] = useState(false);
-  
+
   // Check if this is a conversation that has already ended
   const hasExistingContent = events.length > 0 || conversation.items.size > 0;
 

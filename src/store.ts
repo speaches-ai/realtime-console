@@ -148,7 +148,7 @@ class RealtimeConnection {
       event.event_id = event.event_id || crypto.randomUUID();
       const message = JSON.stringify(event);
       this.dataChannel.send(message);
-      
+
       // Add client-sent event to the event log
       store.getState().addEvent(event as RealtimeEvent);
     } catch (error) {
@@ -203,7 +203,10 @@ const loadConversationSessions = (): ConversationSession[] => {
       return JSON.parse(saved);
     }
   } catch (error) {
-    console.error("Failed to parse conversation sessions from localStorage:", error);
+    console.error(
+      "Failed to parse conversation sessions from localStorage:",
+      error,
+    );
     // If there's an error, remove the invalid data
     localStorage.removeItem(CONVERSATION_SESSIONS_KEY);
   }
@@ -215,7 +218,10 @@ const saveConversationSessions = (sessions: ConversationSession[]) => {
   try {
     localStorage.setItem(CONVERSATION_SESSIONS_KEY, JSON.stringify(sessions));
   } catch (error) {
-    console.error("Failed to save conversation sessions to localStorage:", error);
+    console.error(
+      "Failed to save conversation sessions to localStorage:",
+      error,
+    );
   }
 };
 
@@ -248,11 +254,11 @@ const store = create(
 
     showSettings: false,
     setShowSettings: (showSettings: boolean) => set({ showSettings }),
-      
+
     // Conversation sessions management
     conversationSessions: loadConversationSessions(),
     currentSessionId: "",
-    
+
     addConversationSession: (sessionData: Partial<ConversationSession>) => {
       const state = get() as ExtractState<typeof useStore>;
       const newSession: ConversationSession = {
@@ -260,38 +266,45 @@ const store = create(
         title: sessionData.title || `Session ${new Date().toLocaleString()}`,
         timestamp: sessionData.timestamp || new Date().toISOString(),
         events: sessionData.events || [],
-        conversationItems: sessionData.conversationItems || {}
+        conversationItems: sessionData.conversationItems || {},
       };
-      
+
       const updatedSessions = [...state.conversationSessions, newSession];
-      set({ 
+      set({
         conversationSessions: updatedSessions,
-        currentSessionId: newSession.id
+        currentSessionId: newSession.id,
       });
       saveConversationSessions(updatedSessions);
       return newSession.id;
     },
-    
-    updateConversationSession: (sessionId: string, updates: Partial<ConversationSession>) => {
+
+    updateConversationSession: (
+      sessionId: string,
+      updates: Partial<ConversationSession>,
+    ) => {
       const state = get() as ExtractState<typeof useStore>;
-      const updatedSessions = state.conversationSessions.map(session => 
-        session.id === sessionId ? { ...session, ...updates } : session
+      const updatedSessions = state.conversationSessions.map((session) =>
+        session.id === sessionId ? { ...session, ...updates } : session,
       );
       set({ conversationSessions: updatedSessions });
       saveConversationSessions(updatedSessions);
     },
-    
+
     deleteConversationSession: (sessionId: string) => {
       const state = get() as ExtractState<typeof useStore>;
-      const updatedSessions = state.conversationSessions.filter(session => session.id !== sessionId);
-      set({ 
+      const updatedSessions = state.conversationSessions.filter(
+        (session) => session.id !== sessionId,
+      );
+      set({
         conversationSessions: updatedSessions,
-        currentSessionId: state.currentSessionId === sessionId ? 
-          (updatedSessions[0]?.id || "") : state.currentSessionId
+        currentSessionId:
+          state.currentSessionId === sessionId
+            ? updatedSessions[0]?.id || ""
+            : state.currentSessionId,
       });
       saveConversationSessions(updatedSessions);
     },
-    
+
     setCurrentSessionId: (sessionId: string) => {
       set({ currentSessionId: sessionId });
     },
@@ -331,19 +344,21 @@ const store = create(
       // Add timestamp when the event is captured
       const eventWithTimestamp = {
         ...event,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       };
-      
+
       const state = get() as ExtractState<typeof useStore>;
       // @ts-expect-error
       set((state) => ({ events: [eventWithTimestamp, ...state.events] }));
-      
+
       // Also save the event to the current conversation session if one exists
       if (state.currentSessionId) {
-        const session = state.conversationSessions.find(s => s.id === state.currentSessionId);
+        const session = state.conversationSessions.find(
+          (s) => s.id === state.currentSessionId,
+        );
         if (session) {
           state.updateConversationSession(state.currentSessionId, {
-            events: [eventWithTimestamp, ...session.events]
+            events: [eventWithTimestamp, ...session.events],
           });
         }
       }
@@ -475,9 +490,10 @@ const store = create(
           // state.clearEvents();
 
           // Create a new conversation session if none exists
-          const sessionId = state.currentSessionId || state.addConversationSession({});
+          const sessionId =
+            state.currentSessionId || state.addConversationSession({});
           state.setCurrentSessionId(sessionId);
-          
+
           // Auto-update session if enabled
           if (state.autoUpdateSession) {
             state.realtimeConnection.sendEvent({

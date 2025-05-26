@@ -5,11 +5,7 @@ import { downloadJsonFile } from "../utils";
 
 const EVENT_LOG_FILE_NAME = "event-log.json";
 
-function Event({
-  event,
-}: {
-  event: RealtimeEvent;
-}) {
+function Event({ event }: { event: RealtimeEvent }) {
   const [isExpanded, setIsExpanded] = useState(false);
 
   const isClient = event.event_id && !event.event_id.startsWith("event_");
@@ -27,7 +23,10 @@ function Event({
         )}
         <div className="text-sm text-gray-500 truncate">
           {isClient ? "client:" : "server:"}
-          &nbsp;{event.type} | {event.timestamp ? new Date(event.timestamp).toLocaleTimeString() : 'unknown time'}
+          &nbsp;{event.type} |{" "}
+          {event.timestamp
+            ? new Date(event.timestamp).toLocaleTimeString()
+            : "unknown time"}
         </div>
       </div>
       {isExpanded && (
@@ -63,12 +62,7 @@ export default function EventLog(props: EventLogProps) {
       }
     }
 
-    eventsToDisplay.push(
-      <Event
-        key={event.event_id}
-        event={event}
-      />,
-    );
+    eventsToDisplay.push(<Event key={event.event_id} event={event} />);
   });
 
   return (
