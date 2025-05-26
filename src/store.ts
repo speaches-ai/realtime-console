@@ -107,6 +107,22 @@ class RealtimeConnection {
   setDataChannel(dataChannel: RTCDataChannel) {
     this.dataChannel = dataChannel;
 
+    // Set up event handlers for data channel state changes
+    dataChannel.onopen = (event) => {
+      console.log("Data channel opened", event);
+    };
+    dataChannel.onclosing = (event) => {
+      console.log("Data channel closing", event);
+    };
+    dataChannel.onclose = (event) => {
+      console.log("Data channel closed", event);
+    };
+    dataChannel.onerror = (event) => {
+      console.error("Data channel error:", event);
+    };
+    dataChannel.onbufferedamountlow = (event) => {
+      console.log("Data channel buffered amount low", event);
+    };
     // Set up message handler
     dataChannel.addEventListener("message", (message) => {
       try {
