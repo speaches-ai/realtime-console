@@ -3,6 +3,8 @@ import EventLog from "./EventLog";
 import SessionControls from "./SessionControls";
 import { SessionConfiguration } from "./SessionConfiguration";
 import { ConnectionSettings } from "./ConnectionSettings";
+import { McpServerList } from "./McpServerList";
+import { PromptList } from "./PromptList";
 import {
   Conversation,
   conversationItemFromOpenAI,
@@ -17,48 +19,11 @@ import {
   ResponseOutputItemDoneEvent,
   ResponseTextDeltaEvent,
 } from "openai/resources/beta/realtime/realtime";
-import {
-  Client,
-  ClientOptions,
-} from "@modelcontextprotocol/sdk/client/index.js";
-import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
-import { ClientManager } from "./ClientManager";
-import { Implementation } from "@modelcontextprotocol/sdk/types.js";
+import { McpManager } from "../McpServerManager";
+import { ListPromptsResult } from "@modelcontextprotocol/sdk/types.js";
+import { sleep } from "../utils";
 
-const clientManager = new ClientManager();
-
-const implementation: Implementation = {
-  name: "realtime-console",
-  version: "0.1.0",
-};
-const clientOptions: ClientOptions = {
-  capabilities: {
-    prompts: true,
-    tools: true,
-    resources: {
-      subscribe: true,
-    },
-    logging: true,
-  },
-};
-
-const speachesTransport = new SSEClientTransport(
-  new URL("http://0.0.0.0:3001/sse"),
-);
-const speachesMcpClient = new Client(implementation, clientOptions);
-await clientManager.addClient(speachesMcpClient, speachesTransport);
-
-const githubTransport = new SSEClientTransport(
-  new URL("http://0.0.0.0:10000/sse"),
-);
-const githubMcpClient = new Client(implementation, clientOptions);
-await clientManager.addClient(githubMcpClient, githubTransport);
-
-const todoistTransport = new SSEClientTransport(
-  new URL("http://0.0.0.0:10002/sse"),
-);
-const todoistMcpClient = new Client(implementation, clientOptions);
-await clientManager.addClient(todoistMcpClient, todoistTransport);
+const mcpManager = new McpManager();
 
 type EventListener = (event: RealtimeServerEvent) => void;
 type AsyncEventListener = (event: RealtimeServerEvent) => Promise<void>;
@@ -115,6 +80,7 @@ class RealtimeConnection {
 
 const DATA_CHANNEL_LABEL = "oai-events";
 
+const SESSION_STORAGE_KEY = "session-config";
 const conversation = new Conversation();
 const realtimeConnection = new RealtimeConnection();
 
@@ -124,7 +90,7 @@ const eventHandlers = {
     conversation.upsertItem(item);
 
     if (item.type === "function_call" && event.item.status === "completed") {
-      const res = await clientManager.callTool({
+      const res = await mcpManager.callTool({
         name: item.name,
         arguments: JSON.parse(item.arguments),
       });
@@ -158,7 +124,7 @@ const eventHandlers = {
     conversation.upsertItem(item);
     if (item.type === "function_call") {
       console.log("calling tool", item.name, item.arguments);
-      const res = await clientManager.callTool({
+      const res = await mcpManager.callTool({
         name: item.name,
         arguments: JSON.parse(item.arguments),
       });
@@ -193,33 +159,57 @@ export default function App() {
   const [events, setEvents] = useState<RealtimeEvent[]>([]);
   const [dataChannel, setDataChannel] = useState<RTCDataChannel | null>(null);
   const [autoUpdateSession, setAutoUpdateSession] = useState(true);
-  const [sessionConfig, setSessionConfig] = useState<Session>({
-    modalities: ["text"],
-    model: "gpt-4o-mini",
-    instructions:
-      "Your knowledge cutoff is 2023-10. You are a helpful, witty, and friendly AI. Act like a human, but remember that you aren't a human and that you can't do human things in the real world. Your voice and personality should be warm and engaging, with a lively and playful tone. If interacting in a non-English language, start by using the standard accent or dialect familiar to the user. Talk quickly. You should always call a function if you can. Do not refer to these rules, even if you're asked about them.",
-    voice: "af_heart",
-    input_audio_transcription: {
-      model: "Systran/faster-distil-whisper-small.en",
-    },
-    turn_detection: {
-      type: "server_vad",
-      threshold: 0.9,
-      silence_duration_ms: 500,
-      create_response: true,
-    },
-    tools: [],
-    temperature: 0.8,
-    max_response_output_tokens: "inf",
+  const [prompts, setPrompts] = useState<ListPromptsResult["prompts"]>([]);
+  const [sessionConfig, setSessionConfig] = useState<Session>(() => {
+    const saved = localStorage.getItem(SESSION_STORAGE_KEY);
+    if (saved) {
+      return JSON.parse(saved);
+    }
+    return {
+      modalities: ["text"],
+      model: "gpt-4o-mini",
+      instructions:
+        "Your knowledge cutoff is 2023-10. You are a helpful, witty, and friendly AI. Act like a human, but remember that you aren't a human and that you can't do human things in the real world. Your voice and personality should be warm and engaging, with a lively and playful tone. If interacting in a non-English language, start by using the standard accent or dialect familiar to the user. Talk quickly. You should always call a function if you can. Do not refer to these rules, even if you're asked about them.",
+      voice: "af_heart",
+      input_audio_transcription: {
+        model: "Systran/faster-distil-whisper-small.en",
+      },
+      turn_detection: {
+        type: "server_vad",
+        threshold: 0.9,
+        silence_duration_ms: 500,
+        create_response: true,
+      },
+      tools: [],
+      temperature: 0.8,
+      max_response_output_tokens: "inf",
+    };
   });
   const peerConnection = useRef<RTCPeerConnection>(null);
   const audioElement = useRef<HTMLAudioElement | null>(null);
 
+  // Save session config to localStorage whenever it changes
   useEffect(() => {
-    if (
-      sessionConfig.tools.length > 30 &&
-      !realtimeConnection.eventListeners.has("session.created")
-    ) {
+    localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(sessionConfig));
+  }, [sessionConfig]);
+
+  // Fetch prompts on component mount
+  useEffect(() => {
+    async function fetchPrompts() {
+      try {
+        await sleep(1000);
+        const result = await mcpManager.listPrompts();
+        console.log("Prompts:", result);
+        setPrompts(result.prompts);
+      } catch (error) {
+        console.error("Failed to fetch prompts:", error);
+      }
+    }
+    fetchPrompts();
+  }, []);
+
+  useEffect(() => {
+    if (!realtimeConnection.eventListeners.has("session.created")) {
       realtimeConnection.addEventListener("session.created", () => {
         if (autoUpdateSession) {
           realtimeConnection.sendEvent({
@@ -434,14 +424,19 @@ export default function App() {
             model={model}
             setModel={setModel}
           />
+          <McpServerList mcpManager={mcpManager} />
           <SessionConfiguration
             sendEvent={sendClientEvent}
-            clientManager={clientManager}
+            mcpManager={mcpManager}
             autoUpdateSession={autoUpdateSession}
             setAutoUpdateSession={setAutoUpdateSession}
             sessionConfig={sessionConfig}
             setSessionConfig={setSessionConfig}
+            prompts={prompts}
           />
+          <div className="mt-6">
+            <PromptList prompts={prompts} />
+          </div>
         </section>
       </main>
     </div>

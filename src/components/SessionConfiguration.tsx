@@ -3,12 +3,8 @@ import { useState, useEffect } from "react";
 import Button from "./Button";
 import { SliderInput } from "./shared";
 import { RealtimeClientEvent } from "openai/resources/beta/realtime/realtime.mjs";
-import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
-import { ClientManager } from "./ClientManager";
-import {
-  ListToolsRequest,
-  ListToolsResult,
-} from "@modelcontextprotocol/sdk/types.js";
+import { McpManager } from "../McpServerManager";
+import { ListToolsResult } from "@modelcontextprotocol/sdk/types.js";
 import { sleep } from "../utils";
 
 type Modality = "text" | "audio";
@@ -54,11 +50,12 @@ const baseUrl = "http://localhost:8000/v1";
 
 type SessionConfigurationProps = {
   sendEvent: (event: RealtimeClientEvent) => void;
-  clientManager: ClientManager;
+  mcpManager: McpManager;
   autoUpdateSession: boolean;
   setAutoUpdateSession: (value: boolean) => void;
   sessionConfig: Session;
   setSessionConfig: (config: Session) => void;
+  prompts: ListPromptsResult["prompts"];
 };
 
 function mcpToolsToOpenAI(tools: ListToolsResult): Tool[] {
@@ -99,7 +96,8 @@ export function SessionConfiguration(props: SessionConfigurationProps) {
       setTranscriptionModels(data.data.map((model) => model.id));
     }
     async function fetchTools() {
-      const tools = await props.clientManager.listTools();
+      await sleep(500);
+      const tools = await props.mcpManager.listTools();
       console.log("Available tools:", tools);
       const openaiTools = mcpToolsToOpenAI(tools);
       handleChange("tools", openaiTools);
@@ -169,12 +167,35 @@ export function SessionConfiguration(props: SessionConfigurationProps) {
         <label className="block text-sm font-medium text-gray-700">
           System instructions
         </label>
-        <textarea
-          value={sessionConfig.instructions}
-          onChange={(e) => handleChange("instructions", e.target.value)}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-          rows={5}
-        />
+        <div className="flex flex-col gap-2">
+          <select
+            onChange={async (e) => {
+              if (e.target.value) {
+                const content = await props.mcpManager.getPrompt(
+                  e.target.value,
+                );
+                console.log("Prompt content:", content);
+                if (content) {
+                  handleChange("instructions", content);
+                }
+              }
+            }}
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+          >
+            <option value="">Select a prompt...</option>
+            {props.prompts.map((prompt) => (
+              <option key={prompt.name} value={prompt.name}>
+                {prompt.name}
+              </option>
+            ))}
+          </select>
+          <textarea
+            value={sessionConfig.instructions}
+            onChange={(e) => handleChange("instructions", e.target.value)}
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+            rows={5}
+          />
+        </div>
       </div>
 
       <div>
