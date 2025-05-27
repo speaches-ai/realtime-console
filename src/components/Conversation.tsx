@@ -187,7 +187,10 @@ export class Conversation {
     } else if (content.type === "input_text") {
       content.text += delta;
     } else if (content.type === "input_audio") {
-      console.error("Cannot add delta to audio content");
+      if (content.transcript === null) {
+        content.transcript = "";
+      }
+      content.transcript += delta;
     } else if (content.type === "item_reference") {
       console.error("Cannot add delta to item reference content");
     }
@@ -204,7 +207,10 @@ function MessageItem(props: { item: ConversationItemMessage }) {
         {props.item.content.map((content, index) => {
           if (content.type === "text" || content.type === "input_text") {
             return <p key={index}>{content.text}</p>;
-          } else if (content.type === "audio") {
+          } else if (
+            content.type === "audio" ||
+            content.type === "input_audio"
+          ) {
             return <p key={index}>{content.transcript}</p>;
           }
         })}
