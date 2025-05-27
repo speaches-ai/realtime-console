@@ -17,17 +17,17 @@ import {
   ResponseOutputItemDoneEvent,
   ResponseTextDeltaEvent,
 } from "openai/resources/beta/realtime/realtime";
-
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
+import { ClientManager } from "./ClientManager";
 
 const transport = new SSEClientTransport(new URL("http://0.0.0.0:3001/sse"));
+const clientManager = new ClientManager();
 const mcpClient = new Client(
   {
     name: "realtime-console",
     version: "0.1.0",
   },
-  // { capabilities: {} },
   {
     capabilities: {
       prompts: true,
@@ -39,6 +39,7 @@ const mcpClient = new Client(
     },
   },
 );
+await clientManager.addClient(mcpClient, transport);
 
 type EventListener = (event: RealtimeServerEvent) => void;
 type AsyncEventListener = (event: RealtimeServerEvent) => Promise<void>;
@@ -72,7 +73,6 @@ class RealtimeConnection {
     console.log(this);
     this.events.push(event);
     if (this.eventListeners.has(event.type)) {
-      console.log("Event listener exists for type", event.type);
       this.eventListeners.get(event.type)!(event);
     }
   }
@@ -100,9 +100,58 @@ const conversation = new Conversation();
 const realtimeConnection = new RealtimeConnection();
 
 const eventHandlers = {
-  "conversation.item.created": (event: ConversationItemCreatedEvent) => {
+  "session.created": () => {
+    // Send initial user message
+    realtimeConnection.sendEvent({
+      type: "conversation.item.create",
+      item: {
+        type: "message",
+        role: "user",
+        content: [
+          {
+            type: "input_text",
+            text: "What's the BMI of a guy who's 1.68m and has a weight of 58kg",
+          },
+        ],
+      },
+    });
+
+    // Send assistant message with tool call
+    realtimeConnection.sendEvent({
+      type: "conversation.item.create",
+      item: {
+        type: "function_call",
+        call_id: crypto.randomUUID(),
+        name: "calculate_bmi",
+        arguments: JSON.stringify({
+          height_m: 1.68,
+          weight_kg: 58,
+        }),
+      },
+    });
+  },
+  "conversation.item.created": async (event: ConversationItemCreatedEvent) => {
     const item = conversationItemFromOpenAI(event.item);
     conversation.upsertItem(item);
+
+    if (item.type === "function_call" && event.item.status === "completed") {
+      const res = await clientManager.callTool({
+        name: item.name,
+        arguments: JSON.parse(item.arguments),
+      });
+      console.log("tool call response", res);
+      if (!res.isError) {
+        realtimeConnection.sendEvent({
+          type: "conversation.item.create",
+          item: {
+            type: "function_call_output",
+            call_id: item.call_id,
+            output: res.content[0].text,
+          },
+        });
+        realtimeConnection.sendEvent({ type: "response.create" });
+      }
+    }
   },
   "response.text.delta": (event: ResponseTextDeltaEvent) => {
     conversation.addDelta(event.item_id, event.delta);
@@ -126,6 +175,10 @@ const eventHandlers = {
 
 for (const [type, handler] of Object.entries(eventHandlers)) {
   realtimeConnection.addEventListener(type, handler);
+}
+
+async function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 export default function App() {
@@ -314,7 +367,7 @@ export default function App() {
           />
           <SessionConfiguration
             sendEvent={sendClientEvent}
-            mcpClient={mcpClient}
+            clientManager={mcpClient}
             transport={transport}
           />
         </section>

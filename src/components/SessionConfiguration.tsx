@@ -3,8 +3,8 @@ import { useState, useEffect } from "react";
 import Button from "./Button";
 import { SliderInput } from "./shared";
 import { RealtimeClientEvent } from "openai/resources/beta/realtime/realtime.mjs";
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
+import { ClientManager } from "./ClientManager";
 import {
   ListToolsRequest,
   ListToolsResult,
@@ -113,7 +113,7 @@ const baseUrl = "http://localhost:8000/v1";
 
 type SessionConfigurationProps = {
   sendEvent: (event: RealtimeClientEvent) => void;
-  mcpClient: Client;
+  clientManager: ClientManager;
   transport: SSEClientTransport;
 };
 
@@ -155,12 +155,7 @@ export function SessionConfiguration(props: SessionConfigurationProps) {
       setTranscriptionModels(data.data.map((model) => model.id));
     }
     async function fetchTools() {
-      if (triedToConnect) {
-        return;
-      }
-      await props.mcpClient.connect(props.transport);
-      setTriedToConnect(true);
-      const tools = await props.mcpClient.listTools();
+      const tools = await props.clientManager.listTools();
       console.log("Available tools:", tools);
       const openaiTools = mcpToolsToOpenAI(tools);
       handleChange("tools", openaiTools);
