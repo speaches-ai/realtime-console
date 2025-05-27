@@ -8,4 +8,5 @@ export default defineConfig({
     port: 5777,
   },
   plugins: [react(), tailwindcss()],
+  base: "/v1/realtime",
 });
