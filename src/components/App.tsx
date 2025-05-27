@@ -8,6 +8,7 @@ import { PromptList } from "./PromptList";
 import { conversationItemFromOpenAI, ConversationView } from "./Conversation";
 import {
   ConversationItemCreatedEvent,
+  ConversationItemInputAudioTranscriptionCompletedEvent,
   ResponseAudioTranscriptDeltaEvent,
   ResponseOutputItemDoneEvent,
   ResponseTextDeltaEvent,
@@ -72,6 +73,15 @@ export default function App() {
       },
     );
   }, [realtimeConnection, conversation, mcpManager]);
+
+  useEffect(() => {
+    return realtimeConnection.addEventListener(
+      "conversation.item.input_audio_transcription.completed",
+      (event: ConversationItemInputAudioTranscriptionCompletedEvent) => {
+        conversation.addDelta(event.item_id, event.transcript);
+      },
+    );
+  }, [realtimeConnection, conversation]);
 
   useEffect(() => {
     return realtimeConnection.addEventListener(
