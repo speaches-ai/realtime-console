@@ -9,6 +9,7 @@ import {
   RealtimeServerEvent,
 } from "openai/resources/beta/realtime/realtime.mjs";
 import { ExtractState } from "zustand";
+import decompress from "brotli/decompress";
 
 // Create a singleton McpManager instance
 const mcpManager = new McpManager();
@@ -124,9 +125,25 @@ class RealtimeConnection {
       console.log("Data channel buffered amount low", event);
     };
     // Set up message handler
-    dataChannel.addEventListener("message", (message) => {
+    dataChannel.addEventListener("message", async (message) => {
       try {
-        const event = JSON.parse(message.data) as RealtimeServerEvent;
+        let event: RealtimeServerEvent;
+        if (typeof message.data === "string") {
+          event = JSON.parse(message.data);
+        } else if (message.data instanceof ArrayBuffer) {
+          const uint8Array = new Uint8Array(message.data);
+          const eventText = new TextDecoder().decode(decompress(uint8Array));
+          event = JSON.parse(eventText);
+        } else if (message.data instanceof Blob) {
+          const uint8Array = await message.data.bytes();
+          const eventText = new TextDecoder().decode(decompress(uint8Array));
+          event = JSON.parse(eventText);
+        } else {
+          throw new Error(
+            "Unsupported message data type: " + typeof message.data,
+          );
+        }
+        console.debug(`Received event: ${event.type}`);
         if (this.eventListeners.has(event.type)) {
           this.eventListeners.get(event.type)!(event);
         }
@@ -147,6 +164,7 @@ class RealtimeConnection {
     try {
       event.event_id = event.event_id || crypto.randomUUID();
       const message = JSON.stringify(event);
+      console.debug(`Sending event: ${event.type} (size: ${message.length})`);
       this.dataChannel.send(message);
 
       // Add client-sent event to the event log
