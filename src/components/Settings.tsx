@@ -1,39 +1,24 @@
-import { McpManager } from "../McpServerManager";
-import { ConnectionSettings } from "./ConnectionSettings";
 import { McpServerList } from "./McpServerList";
+import { ConnectionSettings } from "./ConnectionSettings";
 import { useState, useEffect } from "react";
-
-interface SettingsProps {
-  baseUrl: string;
-  setBaseUrl: (url: string) => void;
-  model: string;
-  setModel: (model: string) => void;
-  mcpManager: McpManager;
-  onClose: () => void;
-}
+import useAppStore from "../store";
 
 type Tab = "connection" | "mcp-servers";
 
-export function Settings({
-  baseUrl,
-  setBaseUrl,
-  model,
-  setModel,
-  mcpManager,
-  onClose,
-}: SettingsProps) {
+export function Settings() {
+  const { setShowSettings, mcpManager } = useAppStore();
   const [activeTab, setActiveTab] = useState<Tab>("connection");
 
   useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        onClose();
+        setShowSettings(false);
       }
     };
 
     window.addEventListener("keydown", handleEscape);
     return () => window.removeEventListener("keydown", handleEscape);
-  }, [onClose]);
+  }, [setShowSettings]);
 
   const tabs: { id: Tab; label: string }[] = [
     { id: "connection", label: "Connection Settings" },
@@ -48,7 +33,7 @@ export function Settings({
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-bold">Settings</h2>
             <button
-              onClick={onClose}
+              onClick={() => setShowSettings(false)}
               className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded"
             >
               ✕
@@ -73,17 +58,8 @@ export function Settings({
 
         {/* Content area */}
         <div className="flex-1 p-6 overflow-y-auto">
-          {activeTab === "connection" && (
-            <ConnectionSettings
-              baseUrl={baseUrl}
-              setBaseUrl={setBaseUrl}
-              model={model}
-              setModel={setModel}
-            />
-          )}
-          {activeTab === "mcp-servers" && (
-            <McpServerList mcpManager={mcpManager} />
-          )}
+          {activeTab === "connection" && <ConnectionSettings />}
+          {activeTab === "mcp-servers" && <McpServerList mcpManager={mcpManager} />}
         </div>
       </div>
     </div>

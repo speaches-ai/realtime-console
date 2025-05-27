@@ -1,32 +1,24 @@
 import { SingleRowInput } from "./shared";
+import useAppStore from "../store";
 
-const saveToLocalStorage = (key: string, value: string) => {
-  localStorage.setItem(`connection-${key}`, value);
-};
+export function ConnectionSettings() {
+  const { baseUrl, setBaseUrl, model, setModel } = useAppStore();
 
-export function ConnectionSettings(props: {
-  baseUrl: string;
-  setBaseUrl: (arg0: string) => void;
-  model: string;
-  setModel: (arg0: string) => void;
-}) {
   return (
     <section className="flex flex-col flex-1">
       <form>
         <SingleRowInput
           label="Base URL"
-          value={props.baseUrl}
+          value={baseUrl}
           onChange={(value) => {
-            props.setBaseUrl(value);
-            saveToLocalStorage("baseUrl", value);
+            setBaseUrl(value);
           }}
         />
         <SingleRowInput
           label="Model"
-          value={props.model}
+          value={model}
           onChange={(value) => {
-            props.setModel(value);
-            saveToLocalStorage("model", value);
+            setModel(value);
           }}
         />
       </form>

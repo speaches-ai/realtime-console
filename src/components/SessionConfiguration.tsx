@@ -2,60 +2,15 @@
 import { useState, useEffect } from "react";
 import Button from "./Button";
 import { SliderInput } from "./shared";
-import { RealtimeClientEvent } from "openai/resources/beta/realtime/realtime.mjs";
-import { McpManager } from "../McpServerManager";
+import useAppStore from "../store";
 import { ListToolsResult } from "@modelcontextprotocol/sdk/types.js";
 import { sleep } from "../utils";
-
-type Modality = "text" | "audio";
-
-type InputAudioTranscription = {
-  model: string;
-  language?: string;
-};
-
-type TurnDetectionConfig = {
-  type: "server_vad";
-  threshold?: number;
-  prefix_padding_ms?: number;
-  silence_duration_ms?: number;
-  create_response?: boolean;
-};
 
 type Tool = {
   type: "function";
   name: string;
   description?: string;
   parameters: Record<string, any>;
-};
-
-type Session = {
-  modalities: Modality[];
-  model: string;
-  instructions: string;
-  voice: string;
-  input_audio_transcription: InputAudioTranscription;
-  turn_detection: TurnDetectionConfig | null;
-  tools: Tool[];
-  // tool_choice: "auto" | "none" | "required" | string;
-  temperature: number;
-  max_response_output_tokens: number | "inf";
-};
-
-type Voice = {
-  voice_id: string;
-};
-
-const baseUrl = "http://localhost:8000/v1";
-
-type SessionConfigurationProps = {
-  sendEvent: (event: RealtimeClientEvent) => void;
-  mcpManager: McpManager;
-  autoUpdateSession: boolean;
-  setAutoUpdateSession: (value: boolean) => void;
-  sessionConfig: Session;
-  setSessionConfig: (config: Session) => void;
-  prompts: ListPromptsResult["prompts"];
 };
 
 function mcpToolsToOpenAI(tools: ListToolsResult): Tool[] {
@@ -66,55 +21,64 @@ function mcpToolsToOpenAI(tools: ListToolsResult): Tool[] {
     parameters: tool.inputSchema,
   }));
 }
-export function SessionConfiguration(props: SessionConfigurationProps) {
-  const { sessionConfig, setSessionConfig } = props;
+
+export function SessionConfiguration() {
+  const { 
+    sessionConfig, 
+    setSessionConfig, 
+    autoUpdateSession, 
+    setAutoUpdateSession, 
+    mcpManager, 
+    prompts,
+    realtimeConnection
+  } = useAppStore();
+  
   const [voices, setVoices] = useState<string[]>([]);
   const [transcriptionModels, setTranscriptionModels] = useState<string[]>([]);
-  // const [triedToConnect, setTriedToConnect] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    props.sendEvent({ type: "session.update", session: sessionConfig });
+    realtimeConnection.sendEvent({ type: "session.update", session: sessionConfig });
   };
 
-  const handleChange = (field: keyof Session, value: any) => {
-    setSessionConfig((prev) => ({
-      ...prev,
+  const handleChange = (field: keyof typeof sessionConfig, value: any) => {
+    setSessionConfig({
+      ...sessionConfig,
       [field]: value,
-    }));
+    });
   };
 
   useEffect(() => {
     async function fetchVoices() {
-      const res = await fetch(baseUrl + "/audio/speech/voices");
-      const data: Voice[] = await res.json();
-      setVoices(data.map((voice) => voice.voice_id));
+      const res = await fetch("http://localhost:8000/v1/audio/speech/voices");
+      const data = await res.json();
+      setVoices(data.map((voice: { voice_id: string }) => voice.voice_id));
     }
     async function fetchTranscriptionModels() {
-      const res = await fetch(baseUrl + "/models");
+      const res = await fetch("http://localhost:8000/v1/models");
       const data = await res.json();
-      setTranscriptionModels(data.data.map((model) => model.id));
+      setTranscriptionModels(data.data.map((model: { id: string }) => model.id));
     }
     async function fetchTools() {
       await sleep(400);
-      const tools = await props.mcpManager.listTools();
+      const tools = await mcpManager.listTools();
       console.log("Available tools:", tools);
       const openaiTools = mcpToolsToOpenAI(tools);
       handleChange("tools", openaiTools);
     }
     fetchVoices();
     fetchTranscriptionModels();
-
     fetchTools();
-  }, []);
+  }, [mcpManager]);
+  
   return (
     <form onSubmit={handleSubmit} className="space-y-4 p-4">
       <div className="flex items-center gap-2">
         <input
           type="checkbox"
           id="auto_update"
-          checked={props.autoUpdateSession}
-          onChange={(e) => props.setAutoUpdateSession(e.target.checked)}
+          checked={autoUpdateSession}
+          onChange={(e) => setAutoUpdateSession(e.target.checked)}
           className="rounded border-gray-300"
         />
         <label htmlFor="auto_update" className="text-sm text-gray-600">
@@ -171,7 +135,7 @@ export function SessionConfiguration(props: SessionConfigurationProps) {
           <select
             onChange={async (e) => {
               if (e.target.value) {
-                const content = await props.mcpManager.getPrompt(
+                const content = await mcpManager.getPrompt(
                   e.target.value,
                 );
                 console.log("Prompt content:", content);
@@ -183,7 +147,7 @@ export function SessionConfiguration(props: SessionConfigurationProps) {
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
           >
             <option value="">Select a prompt...</option>
-            {props.prompts.map((prompt) => (
+            {prompts.map((prompt) => (
               <option key={prompt.name} value={prompt.name}>
                 {prompt.name}
               </option>

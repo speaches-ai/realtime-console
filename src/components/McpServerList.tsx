@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { McpManager } from "../McpServerManager";
 import { SingleRowInput } from "./shared";
+import Button from "./Button";
+import useAppStore from "../store";
 
 interface McpServer {
   name: string;
@@ -8,15 +9,10 @@ interface McpServer {
   enabled: boolean;
 }
 
-interface McpServerListProps {
-  mcpManager: McpManager;
-}
-
 const STORAGE_KEY = "mcp-servers";
 
-export function McpServerList({
-  mcpManager: clientManager,
-}: McpServerListProps) {
+export function McpServerList() {
+  const { mcpManager } = useAppStore();
   const [servers, setServers] = useState<McpServer[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     return saved ? JSON.parse(saved) : [];
@@ -39,7 +35,7 @@ export function McpServerList({
     }
 
     try {
-      await clientManager.addServer(newServerName, newServerUrl);
+      await mcpManager.addServer(newServerName, newServerUrl);
       setServers([
         ...servers,
         { name: newServerName, url: newServerUrl, enabled: true },
@@ -53,7 +49,7 @@ export function McpServerList({
 
   const removeServer = async (serverName: string) => {
     try {
-      await clientManager.removeServer(serverName);
+      await mcpManager.removeServer(serverName);
       setServers(servers.filter((server) => server.name !== serverName));
     } catch (error) {
       console.error("Failed to remove MCP server:", error);
@@ -73,9 +69,9 @@ export function McpServerList({
             <button
               onClick={async () => {
                 if (server.enabled) {
-                  await clientManager.removeServer(server.name);
+                  await mcpManager.removeServer(server.name);
                 } else {
-                  await clientManager.addServer(server.name, server.url);
+                  await mcpManager.addServer(server.name, server.url);
                 }
                 setServers(
                   servers.map((s) =>

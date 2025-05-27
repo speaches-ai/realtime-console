@@ -132,6 +132,7 @@ export function conversationItemFromOpenAI(
       output: item.output!,
     };
   }
+  throw new Error(`Invalid item type: ${item.type}`); // HACK
 }
 
 export class Conversation {

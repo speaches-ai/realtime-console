@@ -263,12 +263,15 @@ export class McpManager {
     );
 
     // Merge resource templates, removing duplicates by id
-    const templateMap = new Map();
+    const templateMap = new Map<
+      string,
+      ListResourceTemplatesResult["resourceTemplates"][0]
+    >();
     results.forEach((result) => {
       if (result.status === "fulfilled") {
-        result.value.templates.forEach((template) => {
-          if (!templateMap.has(template.id)) {
-            templateMap.set(template.id, template);
+        result.value.resourceTemplates.forEach((template) => {
+          if (!templateMap.has(template.uriTemplate)) {
+            templateMap.set(template.uriTemplate, template);
           }
         });
       } else {
@@ -277,7 +280,7 @@ export class McpManager {
     });
 
     return {
-      templates: Array.from(templateMap.values()),
+      resourceTemplates: Array.from(templateMap.values()),
     };
   }
 }

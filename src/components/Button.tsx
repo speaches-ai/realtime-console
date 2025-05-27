@@ -4,7 +4,7 @@ export default function Button({
   onClick,
   className,
 }: {
-  icon: React.ReactNode;
+  icon?: React.ReactNode;
   children: React.ReactNode;
   onClick: () => void;
   className?: string;

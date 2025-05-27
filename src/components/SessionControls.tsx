@@ -1,17 +1,11 @@
 import { useEffect, useState } from "react";
 import { CloudLightning, CloudOff, MessageSquare } from "react-feather";
 import Button from "./Button";
+import useAppStore from "../store";
 
-function SessionStopped({
-  startSession,
-}: {
-  startSession: (deviceId?: string) => Promise<void>;
-}) {
+function SessionStopped() {
+  const { startSession, audioDevices, setAudioDevices, selectedMicrophone, setSelectedMicrophone } = useAppStore();
   const [isActivating, setIsActivating] = useState(false);
-  const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([]);
-  const [selectedDevice, setSelectedDevice] = useState<string>(() => {
-    return localStorage.getItem("selected-microphone") || "";
-  });
 
   useEffect(() => {
     async function getAudioDevices() {
@@ -24,14 +18,13 @@ function SessionStopped({
         setAudioDevices(audioInputs);
 
         // Check if previously selected device is still available
-        const savedDevice = localStorage.getItem("selected-microphone");
         if (
-          savedDevice &&
-          audioInputs.some((device) => device.deviceId === savedDevice)
+          selectedMicrophone &&
+          audioInputs.some((device) => device.deviceId === selectedMicrophone)
         ) {
-          setSelectedDevice(savedDevice);
+          setSelectedMicrophone(selectedMicrophone);
         } else if (audioInputs.length > 0) {
-          setSelectedDevice(audioInputs[0].deviceId);
+          setSelectedMicrophone(audioInputs[0].deviceId);
         }
       } catch (err) {
         console.error("Error getting audio devices:", err);
@@ -39,13 +32,13 @@ function SessionStopped({
     }
 
     getAudioDevices();
-  }, []);
+  }, [selectedMicrophone, setAudioDevices, setSelectedMicrophone]);
 
   async function handleStartSession() {
     if (isActivating) return;
 
     setIsActivating(true);
-    await startSession(selectedDevice);
+    await startSession(selectedMicrophone);
   }
 
   return (
@@ -58,10 +51,9 @@ function SessionStopped({
         {isActivating ? "starting session..." : "start session"}
       </Button>
       <select
-        value={selectedDevice}
+        value={selectedMicrophone}
         onChange={(e) => {
-          setSelectedDevice(e.target.value);
-          localStorage.setItem("selected-microphone", e.target.value);
+          setSelectedMicrophone(e.target.value);
         }}
         className="border border-gray-200 rounded-md p-2 max-w-[300px] text-ellipsis"
       >
@@ -75,13 +67,8 @@ function SessionStopped({
   );
 }
 
-function SessionActive({
-  stopSession,
-  sendTextMessage,
-}: {
-  stopSession: () => void;
-  sendTextMessage: (message: string) => void;
-}) {
+function SessionActive() {
+  const { stopSession, sendTextMessage } = useAppStore();
   const [message, setMessage] = useState("");
 
   function handleSendClientEvent() {
@@ -121,26 +108,15 @@ function SessionActive({
   );
 }
 
-export default function SessionControls({
-  startSession,
-  stopSession,
-  sendTextMessage,
-  isSessionActive,
-}: {
-  startSession: (deviceId?: string) => Promise<void>;
-  stopSession: () => void;
-  sendTextMessage: (content: string) => void;
-  isSessionActive: boolean;
-}) {
+export default function SessionControls() {
+  const { isSessionActive } = useAppStore();
+
   return (
     <div className="flex gap-4 border-t-2 border-gray-200 h-full rounded-md">
       {isSessionActive ? (
-        <SessionActive
-          stopSession={stopSession}
-          sendTextMessage={sendTextMessage}
-        />
+        <SessionActive />
       ) : (
-        <SessionStopped startSession={startSession} />
+        <SessionStopped />
       )}
     </div>
   );
