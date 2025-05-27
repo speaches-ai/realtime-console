@@ -30,11 +30,13 @@ export function SessionConfiguration() {
     setAutoUpdateSession, 
     mcpManager, 
     prompts,
+    setPrompts,
     realtimeConnection
   } = useAppStore();
   
   const [voices, setVoices] = useState<string[]>([]);
   const [transcriptionModels, setTranscriptionModels] = useState<string[]>([]);
+  const [isLoadingPrompts, setIsLoadingPrompts] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,6 +48,21 @@ export function SessionConfiguration() {
       ...sessionConfig,
       [field]: value,
     });
+  };
+
+  const handlePromptDropdownClick = async () => {
+    if (prompts.length === 0 && !isLoadingPrompts) {
+      setIsLoadingPrompts(true);
+      try {
+        const result = await mcpManager.listPrompts();
+        console.log("Prompts:", result);
+        setPrompts(result.prompts);
+      } catch (error) {
+        console.error("Failed to fetch prompts:", error);
+      } finally {
+        setIsLoadingPrompts(false);
+      }
+    }
   };
 
   useEffect(() => {
@@ -133,6 +150,7 @@ export function SessionConfiguration() {
         </label>
         <div className="flex flex-col gap-2">
           <select
+            onClick={handlePromptDropdownClick}
             onChange={async (e) => {
               if (e.target.value) {
                 const content = await mcpManager.getPrompt(
@@ -147,11 +165,15 @@ export function SessionConfiguration() {
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
           >
             <option value="">Select a prompt...</option>
-            {prompts.map((prompt) => (
-              <option key={prompt.name} value={prompt.name}>
-                {prompt.name}
-              </option>
-            ))}
+            {isLoadingPrompts ? (
+              <option disabled>Loading prompts...</option>
+            ) : (
+              prompts.map((prompt) => (
+                <option key={prompt.name} value={prompt.name}>
+                  {prompt.name}
+                </option>
+              ))
+            )}
           </select>
           <textarea
             value={sessionConfig.instructions}

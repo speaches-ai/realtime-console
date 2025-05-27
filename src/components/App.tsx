@@ -12,7 +12,6 @@ import {
   ResponseOutputItemDoneEvent,
   ResponseTextDeltaEvent,
 } from "openai/resources/beta/realtime/realtime";
-import { sleep } from "../utils";
 import useAppStore from "../store";
 
 export default function App() {
@@ -27,7 +26,6 @@ export default function App() {
     mcpManager,
     realtimeConnection,
     prompts,
-    setPrompts,
     autoUpdateSession,
     sessionConfig,
   } = useAppStore();
@@ -110,7 +108,7 @@ export default function App() {
     }
   }, [conversation, mcpManager, realtimeConnection]);
 
-  // Initialize MCP servers and fetch prompts on component mount
+  // Initialize MCP servers on component mount
   useEffect(() => {
     const STORAGE_KEY = "mcp-servers";
     const savedServers = localStorage.getItem(STORAGE_KEY);
@@ -131,20 +129,7 @@ export default function App() {
         }
       },
     );
-
-    // Fetch prompts after a delay
-    async function fetchPrompts() {
-      try {
-        await sleep(1000);
-        const result = await mcpManager.listPrompts();
-        console.log("Prompts:", result);
-        setPrompts(result.prompts);
-      } catch (error) {
-        console.error("Failed to fetch prompts:", error);
-      }
-    }
-    fetchPrompts();
-  }, [mcpManager, setPrompts]);
+  }, [mcpManager]);
 
   useEffect(() => {
     if (!realtimeConnection.eventListeners?.has("session.created")) {
