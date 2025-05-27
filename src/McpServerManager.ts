@@ -226,7 +226,7 @@ export class McpManager {
       if (serverTools.tools.some((tool) => tool.name === params.name)) {
         console.log(`Calling tool ${params.name} on server ${server.name}`);
         // @ts-expect-error
-        return await server.client.callTool(params, CallToolResult);
+        return await server.client.callTool(params);
       }
     }
 
