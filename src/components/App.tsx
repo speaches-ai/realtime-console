@@ -7,6 +7,7 @@ import { SessionConfiguration } from "./SessionConfiguration";
 import { Settings } from "./Settings";
 import { PromptList } from "./PromptList";
 import { ConversationSidebar } from "./ConversationSidebar";
+import { ErrorAlerts } from "./ErrorAlert";
 import { conversationItemFromOpenAI, ConversationView, Conversation } from "./Conversation";
 import {
   ConversationItemCreatedEvent,
@@ -39,10 +40,43 @@ export default function App() {
   
   // State for sidebar visibility
   const [showSidebar, setShowSidebar] = useState(true);
+  
+  // State for error alerts
+  const [errorMessages, setErrorMessages] = useState<string[]>([]);
 
+  // Handle dismissing errors
+  const dismissError = (index: number) => {
+    setErrorMessages(prevErrors => prevErrors.filter((_, i) => i !== index));
+  };
+
+  // Listen for all events from the server
   useEffect(() => {
     return realtimeConnection.addAnyEventListener((message) => {
       addEvent(message);
+      
+      // Check if this is an error event
+      if (message.type && 
+          (message.type === 'error' || 
+           message.type.includes('error') || 
+           message.type.includes('failed'))) {
+        
+        // Extract error message based on event structure
+        let errorMessage = 'An error occurred';
+        
+        if ('error' in message && typeof message.error === 'string') {
+          errorMessage = message.error;
+        } else if ('message' in message && typeof message.message === 'string') {
+          errorMessage = message.message;
+        } else if ('reason' in message && typeof message.reason === 'string') {
+          errorMessage = message.reason;
+        } else {
+          // If we can't find a specific field, use the whole event
+          errorMessage = JSON.stringify(message);
+        }
+        
+        // Add to error messages
+        setErrorMessages(prev => [...prev, errorMessage]);
+      }
     });
   }, [realtimeConnection, addEvent]);
 
@@ -345,6 +379,9 @@ export default function App() {
         </section>
       </main>
       {showSettings && <Settings />}
+      
+      {/* Error Alerts */}
+      <ErrorAlerts errors={errorMessages} onDismiss={dismissError} />
     </div>
   );
 }
