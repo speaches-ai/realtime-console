@@ -22,6 +22,7 @@ export default function App() {
     showSettings,
     setShowSettings,
     events,
+    addEvent,
     conversation,
     mcpManager,
     realtimeConnection,
@@ -30,12 +31,21 @@ export default function App() {
     sessionConfig,
   } = useAppStore();
 
+  useEffect(() => {
+    realtimeConnection.addAnyEventListener((message) => {
+      console.log("Realtime message", message);
+      addEvent(message);
+    });
+    console.log("Realtime added any event listener");
+  }, []);
+
   // Set up event handlers for the realtime connection
   useEffect(() => {
     const eventHandlers = {
       "conversation.item.created": async (
         event: ConversationItemCreatedEvent,
       ) => {
+        console.log("conversation.item.created", event);
         const item = conversationItemFromOpenAI(event.item);
         conversation.upsertItem(item);
 
