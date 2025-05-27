@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { SingleRowInput } from "./shared";
-import Button from "./Button";
 import useStore from "../store";
 
 interface McpServer {
