@@ -280,8 +280,6 @@ const store = create(
           const data = await tokenResponse.json();
           EPHEMERAL_KEY = data.client_secret.value;
         }
-
-        // Create a peer connection
         const pc = new RTCPeerConnection();
 
         // Set up to play remote audio from the model
@@ -304,6 +302,7 @@ const store = create(
 
         // Start the session using the Session Description Protocol (SDP)
         const offer = await pc.createOffer();
+        console.log("SDP offer:", offer.sdp);
         await pc.setLocalDescription(offer);
 
         const sdpResponse = await fetch(
@@ -318,10 +317,45 @@ const store = create(
           },
         );
 
+        pc.onnegotiationneeded = (event) => {
+          console.log("Negotiation needed", event);
+        };
+
+        pc.onsignalingstatechange = (event) => {
+          console.log("Signaling state change:", event);
+        };
+
+        pc.oniceconnectionstatechange = (event) => {
+          console.log(
+            "ICE connection state change:",
+            event,
+            pc.iceConnectionState,
+          );
+        };
+        pc.onicegatheringstatechange = (event) => {
+          console.log(
+            "ICE gathering state change:",
+            event,
+            pc.iceGatheringState,
+          );
+        };
+        pc.onconnectionstatechange = (event) => {
+          console.log("Connection state change:", event, pc.connectionState);
+        };
+
+        pc.onicecandidate = (event) => {
+          console.log("ICE candidate:", event.candidate);
+        };
+
+        pc.onicecandidateerror = (event) => {
+          console.error("ICE candidate error:", event.errorText);
+        };
+
         const answer: RTCSessionDescriptionInit = {
           type: "answer",
           sdp: await sdpResponse.text(),
         };
+        console.log("SDP answer:", answer.sdp);
         await pc.setRemoteDescription(answer);
 
         state.setPeerConnection(pc);
