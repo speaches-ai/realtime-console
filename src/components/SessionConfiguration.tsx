@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import Button from "./Button";
 import { SliderInput } from "./shared";
-import useAppStore from "../store";
+import useStore from "../store";
 import { ListToolsResult } from "@modelcontextprotocol/sdk/types.js";
 
 type Tool = {
@@ -32,7 +32,7 @@ export function SessionConfiguration() {
     setPrompts,
     realtimeConnection,
     baseUrl,
-  } = useAppStore();
+  } = useStore();
 
   const [voices, setVoices] = useState<string[]>([]);
   const [transcriptionModels, setTranscriptionModels] = useState<string[]>([]);

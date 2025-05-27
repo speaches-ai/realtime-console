@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { SingleRowInput } from "./shared";
 import Button from "./Button";
-import useAppStore from "../store";
+import useStore from "../store";
 
 interface McpServer {
   name: string;
@@ -12,7 +12,7 @@ interface McpServer {
 const STORAGE_KEY = "mcp-servers";
 
 export function McpServerList() {
-  const { mcpManager } = useAppStore();
+  const { mcpManager } = useStore();
   const [servers, setServers] = useState<McpServer[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     return saved ? JSON.parse(saved) : [];

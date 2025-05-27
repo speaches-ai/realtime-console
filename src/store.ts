@@ -172,7 +172,7 @@ export const createSelectors = <S extends StoreApi<object>>(_store: S) => {
 };
 
 // Define the store state
-interface AppState {
+interface State {
   // Connection settings
   baseUrl: string;
   setBaseUrl: (url: string) => void;
@@ -230,7 +230,7 @@ interface AppState {
 }
 
 // Create the store
-const appStore = create<AppState>()((set, get) => ({
+const store = create<State>()((set, get) => ({
   // Initialize with default values or from localStorage
   baseUrl: localStorage.getItem(BASE_URL_STORAGE_KEY) || DEFAULT_BASE_URL,
   setBaseUrl: (url) => {
@@ -436,6 +436,6 @@ const appStore = create<AppState>()((set, get) => ({
   },
 }));
 
-const useAppStore = createSelectors(appStore);
+const useStore = createSelectors(store);
 
-export default useAppStore; // FIXME: do not use default export
+export default useStore; // FIXME: do not use default export

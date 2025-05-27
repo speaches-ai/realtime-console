@@ -12,7 +12,7 @@ import {
   ResponseOutputItemDoneEvent,
   ResponseTextDeltaEvent,
 } from "openai/resources/beta/realtime/realtime";
-import useAppStore from "../store";
+import useStore from "../store";
 
 export default function App() {
   // Get state and actions from Zustand store
@@ -29,7 +29,7 @@ export default function App() {
     prompts,
     autoUpdateSession,
     sessionConfig,
-  } = useAppStore();
+  } = useStore();
 
   useEffect(() => {
     return realtimeConnection.addAnyEventListener((message) => {

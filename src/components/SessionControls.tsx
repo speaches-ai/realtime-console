@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { CloudLightning, CloudOff, MessageSquare } from "react-feather";
 import Button from "./Button";
-import useAppStore from "../store";
+import useStore from "../store";
 
 function SessionStopped() {
   const {
@@ -10,7 +10,7 @@ function SessionStopped() {
     setAudioDevices,
     selectedMicrophone,
     setSelectedMicrophone,
-  } = useAppStore();
+  } = useStore();
   const [isActivating, setIsActivating] = useState(false);
 
   useEffect(() => {
@@ -74,7 +74,7 @@ function SessionStopped() {
 }
 
 function SessionActive() {
-  const { stopSession, sendTextMessage } = useAppStore();
+  const { stopSession, sendTextMessage } = useStore();
   const [message, setMessage] = useState("");
 
   function handleSendClientEvent() {
@@ -115,7 +115,7 @@ function SessionActive() {
 }
 
 export default function SessionControls() {
-  const { isSessionActive } = useAppStore();
+  const { isSessionActive } = useStore();
 
   return (
     <div className="flex gap-4 border-t-2 border-gray-200 h-full rounded-md">

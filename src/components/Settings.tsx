@@ -1,12 +1,12 @@
 import { McpServerList } from "./McpServerList";
 import { ConnectionSettings } from "./ConnectionSettings";
 import { useState, useEffect } from "react";
-import useAppStore from "../store";
+import useStore from "../store";
 
 type Tab = "connection" | "mcp-servers";
 
 export function Settings() {
-  const { setShowSettings, mcpManager } = useAppStore();
+  const { setShowSettings, mcpManager } = useStore();
   const [activeTab, setActiveTab] = useState<Tab>("connection");
 
   useEffect(() => {

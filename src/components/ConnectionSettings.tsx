@@ -1,8 +1,8 @@
 import { SingleRowInput } from "./shared";
-import useAppStore from "../store";
+import useStore from "../store";
 
 export function ConnectionSettings() {
-  const { baseUrl, setBaseUrl, model, setModel } = useAppStore();
+  const { baseUrl, setBaseUrl, model, setModel } = useStore();
 
   return (
     <section className="flex flex-col flex-1">
