@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { ConversationItem as OpenAIConversationItem } from "openai/resources/beta/realtime/realtime";
 
 export interface ConversationItemContentAudio {
@@ -268,7 +268,42 @@ export function ConversationView(props: {
   conversation: Conversation;
   onFunctionOutput?: (callId: string, output: string) => void;
 }) {
-  // console.log(Array.from(props.conversation.items.values()));
+  const conversationEndRef = useRef<HTMLDivElement>(null);
+  const [itemsCount, setItemsCount] = useState(0);
+  
+  // Check if user is at the bottom of the conversation
+  const isAtBottom = () => {
+    if (!conversationEndRef.current) return true;
+    
+    const container = conversationEndRef.current.parentElement;
+    if (!container) return true;
+    
+    const scrollPosition = container.scrollTop + container.clientHeight;
+    const scrollHeight = container.scrollHeight;
+    
+    // Consider "at bottom" if within 100px of the bottom
+    return scrollHeight - scrollPosition < 100;
+  };
+
+  // Scroll to bottom if user was already at bottom
+  useEffect(() => {
+    const currentItemsCount = props.conversation.items.size;
+    
+    if (currentItemsCount > itemsCount) {
+      if (isAtBottom()) {
+        conversationEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }
+      setItemsCount(currentItemsCount);
+    }
+  }, [props.conversation.items.size, itemsCount]);
+
+  // Also scroll when content changes (for deltas)
+  useEffect(() => {
+    if (isAtBottom()) {
+      conversationEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  });
+
   return (
     <div>
       {Array.from(props.conversation.items.values()).map((item) => {
@@ -290,6 +325,7 @@ export function ConversationView(props: {
           );
         }
       })}
+      <div ref={conversationEndRef} />
     </div>
   );
 }
