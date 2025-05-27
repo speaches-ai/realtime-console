@@ -26,3 +26,5 @@ dist-ssr
 .env
 .direnv
 .aider*
+
+**/.claude/settings.local.json
