@@ -90,7 +90,9 @@ export function SessionConfiguration() {
     if (transcriptionModels.length === 0 && !isLoadingTranscriptionModels) {
       setIsLoadingTranscriptionModels(true);
       try {
-        const res = await fetch(`${baseUrl}/models`);
+        const res = await fetch(
+          `${baseUrl}/models?task=automatic-speech-recognition`,
+        );
         const data = await res.json();
         setTranscriptionModels(
           data.data.map((model: { id: string }) => model.id),

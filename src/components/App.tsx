@@ -32,20 +32,15 @@ export default function App() {
   } = useAppStore();
 
   useEffect(() => {
-    realtimeConnection.addAnyEventListener((message) => {
-      console.log("Realtime message", message);
+    return realtimeConnection.addAnyEventListener((message) => {
       addEvent(message);
     });
-    console.log("Realtime added any event listener");
-  }, []);
+  }, [realtimeConnection, addEvent]);
 
-  // Set up event handlers for the realtime connection
   useEffect(() => {
-    const eventHandlers = {
-      "conversation.item.created": async (
-        event: ConversationItemCreatedEvent,
-      ) => {
-        console.log("conversation.item.created", event);
+    return realtimeConnection.addEventListener(
+      "conversation.item.created",
+      async (event: ConversationItemCreatedEvent) => {
         const item = conversationItemFromOpenAI(event.item);
         conversation.upsertItem(item);
 
@@ -74,17 +69,31 @@ export default function App() {
           }
         }
       },
-      "response.text.delta": (event: ResponseTextDeltaEvent) => {
+    );
+  }, [realtimeConnection, conversation, mcpManager]);
+
+  useEffect(() => {
+    return realtimeConnection.addEventListener(
+      "response.text.delta",
+      (event: ResponseTextDeltaEvent) => {
         conversation.addDelta(event.item_id, event.delta);
       },
-      "response.audio_transcript.delta": (
-        event: ResponseAudioTranscriptDeltaEvent,
-      ) => {
+    );
+  }, [realtimeConnection, conversation]);
+
+  useEffect(() => {
+    return realtimeConnection.addEventListener(
+      "response.audio_transcript.delta",
+      (event: ResponseAudioTranscriptDeltaEvent) => {
         conversation.addDelta(event.item_id, event.delta);
       },
-      "response.output_item.done": async (
-        event: ResponseOutputItemDoneEvent,
-      ) => {
+    );
+  }, [realtimeConnection, conversation]);
+
+  useEffect(() => {
+    return realtimeConnection.addEventListener(
+      "output_item.done",
+      async (event: ResponseOutputItemDoneEvent) => {
         const item = conversationItemFromOpenAI(event.item);
         conversation.upsertItem(item);
         if (item.type === "function_call") {
@@ -111,12 +120,8 @@ export default function App() {
           }
         }
       },
-    };
-
-    for (const [type, handler] of Object.entries(eventHandlers)) {
-      realtimeConnection.addEventListener(type, handler);
-    }
-  }, [conversation, mcpManager, realtimeConnection]);
+    );
+  }, [realtimeConnection, conversation, mcpManager]);
 
   // Initialize MCP servers on component mount
   useEffect(() => {
@@ -142,16 +147,14 @@ export default function App() {
   }, [mcpManager]);
 
   useEffect(() => {
-    if (!realtimeConnection.eventListeners?.has("session.created")) {
-      realtimeConnection.addEventListener("session.created", () => {
-        if (autoUpdateSession) {
-          realtimeConnection.sendEvent({
-            type: "session.update",
-            session: sessionConfig,
-          });
-        }
-      });
-    }
+    return realtimeConnection.addEventListener("session.created", () => {
+      if (autoUpdateSession) {
+        realtimeConnection.sendEvent({
+          type: "session.update",
+          session: sessionConfig,
+        });
+      }
+    });
   }, [autoUpdateSession, realtimeConnection, sessionConfig]);
 
   // Add keyboard shortcut listener for settings

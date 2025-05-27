@@ -372,15 +372,15 @@ const appStore = create<AppState>((set, get) => ({
       // Set up data channel event handlers
       dc.addEventListener("open", () => {
         state.setIsSessionActive(true);
-        state.clearEvents();
+        // state.clearEvents();
 
         // Auto-update session if enabled
-        if (state.autoUpdateSession) {
-          state.realtimeConnection.sendEvent({
-            type: "session.update",
-            session: state.sessionConfig,
-          });
-        }
+        // if (state.autoUpdateSession) {
+        //   state.realtimeConnection.sendEvent({
+        //     type: "session.update",
+        //     session: state.sessionConfig,
+        //   });
+        // }
       });
     } catch (error) {
       console.error("Failed to start session:", error);
