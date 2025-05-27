@@ -154,7 +154,9 @@ for (const [type, handler] of Object.entries(eventHandlers)) {
 
 export default function App() {
   const [baseUrl, setBaseUrl] = useState(() => {
-    return localStorage.getItem("connection-baseUrl") || "http://localhost:8000/v1";
+    return (
+      localStorage.getItem("connection-baseUrl") || "http://localhost:8000/v1"
+    );
   });
   const [model, setModel] = useState(() => {
     return localStorage.getItem("connection-model") || "gpt-4o-mini";
@@ -162,7 +164,9 @@ export default function App() {
   const [isSessionActive, setIsSessionActive] = useState(false);
   const [events, setEvents] = useState<RealtimeEvent[]>([]);
   const [dataChannel, setDataChannel] = useState<RTCDataChannel | null>(null);
-  const [activeView, setActiveView] = useState<'conversation' | 'events'>('conversation');
+  const [activeView, setActiveView] = useState<"conversation" | "events">(
+    "conversation",
+  );
   const [showSettings, setShowSettings] = useState(false);
   const [autoUpdateSession, setAutoUpdateSession] = useState(true);
   const [prompts, setPrompts] = useState<ListPromptsResult["prompts"]>([]);
@@ -206,18 +210,20 @@ export default function App() {
     const servers = savedServers ? JSON.parse(savedServers) : [];
 
     // Connect to enabled MCP servers
-    servers.forEach(async (server: { name: string, url: string, enabled: boolean }) => {
-      if (server.enabled) {
-        try {
-          await mcpManager.addServer(server.name, server.url);
-        } catch (error) {
-          console.error(
-            `Failed to reconnect to MCP server ${server.url}:`,
-            error,
-          );
+    servers.forEach(
+      async (server: { name: string; url: string; enabled: boolean }) => {
+        if (server.enabled) {
+          try {
+            await mcpManager.addServer(server.name, server.url);
+          } catch (error) {
+            console.error(
+              `Failed to reconnect to MCP server ${server.url}:`,
+              error,
+            );
+          }
         }
-      }
-    });
+      },
+    );
 
     // Fetch prompts after a delay
     async function fetchPrompts() {
@@ -294,8 +300,8 @@ export default function App() {
     // Add local audio track for microphone input in the browser
     const ms = await navigator.mediaDevices.getUserMedia({
       audio: {
-        deviceId: dataChannel?.selectedDeviceId
-      }
+        deviceId: dataChannel?.selectedDeviceId,
+      },
     });
     pc.addTrack(ms.getTracks()[0]);
 
@@ -394,14 +400,14 @@ export default function App() {
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
       // Check for Ctrl/Cmd + ,
-      if ((e.ctrlKey || e.metaKey) && e.key === ',') {
+      if ((e.ctrlKey || e.metaKey) && e.key === ",") {
         e.preventDefault();
-        setShowSettings(prev => !prev);
+        setShowSettings((prev) => !prev);
       }
     };
-    
-    window.addEventListener('keydown', handleKeyPress);
-    return () => window.removeEventListener('keydown', handleKeyPress);
+
+    window.addEventListener("keydown", handleKeyPress);
+    return () => window.removeEventListener("keydown", handleKeyPress);
   }, []);
 
   useEffect(() => {
@@ -429,16 +435,43 @@ export default function App() {
         </div>
       </nav>
       <main className="flex flex-1 overflow-y-scroll">
+        <div className="bg-gray-900 text-white min-h-screen">
+          <nav className="bg-gray-800 border-b border-gray-700"></nav>
+
+          <main className="p-6">
+            <div className="bg-gray-800 rounded-lg p-6 shadow-lg">
+              <h2 className="text-xl font-semibold mb-4">Content Card</h2>
+              <p className="text-gray-300 mb-4">
+                This is sample content that mimics OpenAI's dark mode style.
+              </p>
+
+              <div className="flex space-x-4">
+                <button className="bg-green-600 hover:bg-green-700 text-white font-medium rounded-md px-4 py-2">
+                  Submit
+                </button>
+                <button className="bg-gray-700 hover:bg-gray-600 text-white font-medium rounded-md px-4 py-2">
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </main>
+        </div>
         <section className="flex flex-col flex-1">
           <section className="flex-1 px-4 overflow-y-auto">
             <div className="flex justify-end mb-4">
               <Button
-                onClick={() => setActiveView(activeView === 'conversation' ? 'events' : 'conversation')}
+                onClick={() =>
+                  setActiveView(
+                    activeView === "conversation" ? "events" : "conversation",
+                  )
+                }
               >
-                {activeView === 'conversation' ? 'Show Events' : 'Show Conversation'}
+                {activeView === "conversation"
+                  ? "Show Events"
+                  : "Show Conversation"}
               </Button>
             </div>
-            {activeView === 'conversation' ? (
+            {activeView === "conversation" ? (
               <ConversationView
                 conversation={conversation}
                 onFunctionOutput={(callId, output) => {

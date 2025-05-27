@@ -224,7 +224,7 @@ function FunctionCallItem(props: {
           onClick={() => setIsCollapsed(!isCollapsed)}
           className="text-gray-500 hover:text-gray-700"
         >
-          {isCollapsed ? '▼ Expand' : '▲ Collapse'}
+          {isCollapsed ? "▼ Expand" : "▲ Collapse"}
         </button>
       </div>
       {!isCollapsed && (
@@ -250,7 +250,9 @@ function FunctionCallItem(props: {
                   rows={3}
                 />
                 <button
-                  onClick={() => props.onOutput?.(props.item.call_id, outputText)}
+                  onClick={() =>
+                    props.onOutput?.(props.item.call_id, outputText)
+                  }
                   className="mt-2 px-3 py-1 bg-blue-500 text-white rounded-md hover:bg-blue-600"
                 >
                   Submit Output
@@ -270,17 +272,17 @@ export function ConversationView(props: {
 }) {
   const conversationEndRef = useRef<HTMLDivElement>(null);
   const [itemsCount, setItemsCount] = useState(0);
-  
+
   // Check if user is at the bottom of the conversation
   const isAtBottom = () => {
     if (!conversationEndRef.current) return true;
-    
+
     const container = conversationEndRef.current.parentElement;
     if (!container) return true;
-    
+
     const scrollPosition = container.scrollTop + container.clientHeight;
     const scrollHeight = container.scrollHeight;
-    
+
     // Consider "at bottom" if within 100px of the bottom
     return scrollHeight - scrollPosition < 100;
   };
@@ -288,10 +290,10 @@ export function ConversationView(props: {
   // Scroll to bottom if user was already at bottom
   useEffect(() => {
     const currentItemsCount = props.conversation.items.size;
-    
+
     if (currentItemsCount > itemsCount) {
       if (isAtBottom()) {
-        conversationEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        conversationEndRef.current?.scrollIntoView({ behavior: "smooth" });
       }
       setItemsCount(currentItemsCount);
     }
@@ -300,7 +302,7 @@ export function ConversationView(props: {
   // Also scroll when content changes (for deltas)
   useEffect(() => {
     if (isAtBottom()) {
-      conversationEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      conversationEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
   });
 

@@ -18,12 +18,17 @@ function SessionStopped({
       try {
         await navigator.mediaDevices.getUserMedia({ audio: true });
         const devices = await navigator.mediaDevices.enumerateDevices();
-        const audioInputs = devices.filter(device => device.kind === 'audioinput');
+        const audioInputs = devices.filter(
+          (device) => device.kind === "audioinput",
+        );
         setAudioDevices(audioInputs);
-        
+
         // Check if previously selected device is still available
         const savedDevice = localStorage.getItem("selected-microphone");
-        if (savedDevice && audioInputs.some(device => device.deviceId === savedDevice)) {
+        if (
+          savedDevice &&
+          audioInputs.some((device) => device.deviceId === savedDevice)
+        ) {
           setSelectedDevice(savedDevice);
         } else if (audioInputs.length > 0) {
           setSelectedDevice(audioInputs[0].deviceId);
@@ -32,7 +37,7 @@ function SessionStopped({
         console.error("Error getting audio devices:", err);
       }
     }
-    
+
     getAudioDevices();
   }, []);
 
@@ -52,7 +57,7 @@ function SessionStopped({
       >
         {isActivating ? "starting session..." : "start session"}
       </Button>
-      <select 
+      <select
         value={selectedDevice}
         onChange={(e) => {
           setSelectedDevice(e.target.value);
@@ -60,7 +65,7 @@ function SessionStopped({
         }}
         className="border border-gray-200 rounded-md p-2 max-w-[300px] text-ellipsis"
       >
-        {audioDevices.map(device => (
+        {audioDevices.map((device) => (
           <option key={device.deviceId} value={device.deviceId}>
             {device.label || `Microphone ${device.deviceId.slice(0, 8)}...`}
           </option>

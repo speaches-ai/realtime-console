@@ -81,7 +81,9 @@ export function Settings({
               setModel={setModel}
             />
           )}
-          {activeTab === "mcp-servers" && <McpServerList mcpManager={mcpManager} />}
+          {activeTab === "mcp-servers" && (
+            <McpServerList mcpManager={mcpManager} />
+          )}
         </div>
       </div>
     </div>

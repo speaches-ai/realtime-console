@@ -32,7 +32,9 @@ function Event({
       {isExpanded && (
         <div className="text-gray-500 bg-gray-200 p-2 rounded-md w-full">
           <div className="overflow-x-auto">
-            <pre className="text-xs whitespace-pre-wrap break-all">{JSON.stringify(event, null, 2)}</pre>
+            <pre className="text-xs whitespace-pre-wrap break-all">
+              {JSON.stringify(event, null, 2)}
+            </pre>
           </div>
         </div>
       )}
@@ -41,9 +43,11 @@ function Event({
 }
 
 function downloadJson(data: any, filename: string) {
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const blob = new Blob([JSON.stringify(data, null, 2)], {
+    type: "application/json",
+  });
   const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
+  const link = document.createElement("a");
   link.href = url;
   link.download = filename;
   document.body.appendChild(link);
@@ -79,7 +83,7 @@ export default function EventLog({ events }: { events: RealtimeEvent[] }) {
     <div className="flex flex-col gap-2 w-full relative">
       <div className="absolute top-0 right-0 z-10">
         <button
-          onClick={() => downloadJson(events, 'event-log.json')}
+          onClick={() => downloadJson(events, "event-log.json")}
           className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
         >
           Export JSON
