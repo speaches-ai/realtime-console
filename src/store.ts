@@ -131,6 +131,9 @@ class RealtimeConnection {
       event.event_id = event.event_id || crypto.randomUUID();
       const message = JSON.stringify(event);
       this.dataChannel.send(message);
+      
+      // Add client-sent event to the event log
+      store.getState().addEvent(event as RealtimeEvent);
     } catch (error) {
       console.error("Failed to send event:", error);
     }
