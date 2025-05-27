@@ -214,39 +214,52 @@ function FunctionCallItem(props: {
   onOutput?: (callId: string, output: string) => void;
 }) {
   const [outputText, setOutputText] = useState("");
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   return (
     <div className="mb-4 p-4 border rounded-md bg-gray-50">
-      <div className="font-bold mb-2">{props.item.name}</div>
-      <div className="mb-4">
-        <div className="text-sm text-gray-600 mb-1">Arguments:</div>
-        <pre className="bg-gray-100 p-2 rounded overflow-x-auto">
-          <code>{props.item.arguments}</code>
-        </pre>
+      <div className="flex justify-between items-center mb-2">
+        <div className="font-bold">{props.item.name}</div>
+        <button
+          onClick={() => setIsCollapsed(!isCollapsed)}
+          className="text-gray-500 hover:text-gray-700"
+        >
+          {isCollapsed ? '▼ Expand' : '▲ Collapse'}
+        </button>
       </div>
-      <div>
-        <div className="text-sm text-gray-600 mb-1">Output:</div>
-        {props.output ? (
-          <pre className="bg-gray-100 p-2 rounded overflow-x-auto">
-            <code>{props.output.output}</code>
-          </pre>
-        ) : (
-          <div>
-            <textarea
-              value={outputText}
-              onChange={(e) => setOutputText(e.target.value)}
-              className="w-full p-2 border rounded-md"
-              rows={3}
-            />
-            <button
-              onClick={() => props.onOutput?.(props.item.call_id, outputText)}
-              className="mt-2 px-3 py-1 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-            >
-              Submit Output
-            </button>
+      {!isCollapsed && (
+        <>
+          <div className="mb-4">
+            <div className="text-sm text-gray-600 mb-1">Arguments:</div>
+            <pre className="bg-gray-100 p-2 rounded overflow-x-auto">
+              <code>{props.item.arguments}</code>
+            </pre>
           </div>
-        )}
-      </div>
+          <div>
+            <div className="text-sm text-gray-600 mb-1">Output:</div>
+            {props.output ? (
+              <pre className="bg-gray-100 p-2 rounded overflow-x-auto">
+                <code>{props.output.output}</code>
+              </pre>
+            ) : (
+              <div>
+                <textarea
+                  value={outputText}
+                  onChange={(e) => setOutputText(e.target.value)}
+                  className="w-full p-2 border rounded-md"
+                  rows={3}
+                />
+                <button
+                  onClick={() => props.onOutput?.(props.item.call_id, outputText)}
+                  className="mt-2 px-3 py-1 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+                >
+                  Submit Output
+                </button>
+              </div>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }
