@@ -230,7 +230,7 @@ interface AppState {
 }
 
 // Create the store
-const appStore = create<AppState>((set, get) => ({
+const appStore = create<AppState>()((set, get) => ({
   // Initialize with default values or from localStorage
   baseUrl: localStorage.getItem(BASE_URL_STORAGE_KEY) || DEFAULT_BASE_URL,
   setBaseUrl: (url) => {
