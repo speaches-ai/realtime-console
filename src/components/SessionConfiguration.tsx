@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from "react";
 import Button from "./Button";
 import { SliderInput } from "./shared";
@@ -45,6 +44,7 @@ export function SessionConfiguration() {
     e.preventDefault();
     realtimeConnection.sendEvent({
       type: "session.update",
+      // @ts-expect-error
       session: sessionConfig,
     });
   };
@@ -112,6 +112,7 @@ export function SessionConfiguration() {
       const openaiTools = mcpToolsToOpenAI(tools);
       handleChange("tools", openaiTools);
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (

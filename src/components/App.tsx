@@ -40,6 +40,7 @@ export default function App() {
   useEffect(() => {
     return realtimeConnection.addEventListener(
       "conversation.item.created",
+      // @ts-expect-error
       async (event: ConversationItemCreatedEvent) => {
         const item = conversationItemFromOpenAI(event.item);
         conversation.upsertItem(item);
@@ -75,6 +76,7 @@ export default function App() {
   useEffect(() => {
     return realtimeConnection.addEventListener(
       "response.text.delta",
+      // @ts-expect-error
       (event: ResponseTextDeltaEvent) => {
         conversation.addDelta(event.item_id, event.delta);
       },
@@ -84,6 +86,7 @@ export default function App() {
   useEffect(() => {
     return realtimeConnection.addEventListener(
       "response.audio_transcript.delta",
+      // @ts-expect-error
       (event: ResponseAudioTranscriptDeltaEvent) => {
         conversation.addDelta(event.item_id, event.delta);
       },
@@ -93,6 +96,7 @@ export default function App() {
   useEffect(() => {
     return realtimeConnection.addEventListener(
       "output_item.done",
+      // @ts-expect-error
       async (event: ResponseOutputItemDoneEvent) => {
         const item = conversationItemFromOpenAI(event.item);
         conversation.upsertItem(item);
@@ -151,6 +155,7 @@ export default function App() {
       if (autoUpdateSession) {
         realtimeConnection.sendEvent({
           type: "session.update",
+          // @ts-expect-error
           session: sessionConfig,
         });
       }
@@ -163,13 +168,13 @@ export default function App() {
       // Check for Ctrl/Cmd + ,
       if ((e.ctrlKey || e.metaKey) && e.key === ",") {
         e.preventDefault();
-        setShowSettings((prev) => !prev);
+        setShowSettings(!showSettings);
       }
     };
 
     window.addEventListener("keydown", handleKeyPress);
     return () => window.removeEventListener("keydown", handleKeyPress);
-  }, [setShowSettings]);
+  }, [setShowSettings, showSettings]);
 
   return (
     <div className="flex flex-col h-screen">

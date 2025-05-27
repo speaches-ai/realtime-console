@@ -65,6 +65,7 @@ export type ConversationItem =
   | ConversationItemFunctionCall
   | ConversationItemFunctionCallOutput;
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function conversationItemFromOpenAI(
   item: OpenAIConversationItem,
 ): ConversationItem {
@@ -89,6 +90,7 @@ export function conversationItemFromOpenAI(
               type: "text",
               text: content.text!,
             };
+            // @ts-expect-error
           } else if (content.type === "audio") {
             return {
               type: "audio",
@@ -109,6 +111,8 @@ export function conversationItemFromOpenAI(
               type: "item_reference",
               id: content.id!,
             };
+          } else {
+            throw new Error(`Invalid content type: ${content.type}`);
           }
         }) ?? [],
     };

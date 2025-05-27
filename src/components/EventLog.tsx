@@ -2,6 +2,8 @@ import { ArrowUp, ArrowDown } from "react-feather";
 import { JSX, useState } from "react";
 import { RealtimeEvent } from "../types";
 
+const EVENT_LOG_FILE_NAME = "event-log.json";
+
 function Event({
   event,
   timestamp,
@@ -42,7 +44,7 @@ function Event({
   );
 }
 
-function downloadJson(data: any, filename: string) {
+function downloadJson(data: RealtimeEvent[], filename: string) {
   const blob = new Blob([JSON.stringify(data, null, 2)], {
     type: "application/json",
   });
@@ -56,16 +58,22 @@ function downloadJson(data: any, filename: string) {
   URL.revokeObjectURL(url);
 }
 
-export default function EventLog({ events }: { events: RealtimeEvent[] }) {
-  const eventsToDisplay: JSX.Element[] = [];
-  const deltaEvents = {};
+export type EventLogProps = {
+  events: RealtimeEvent[];
+};
 
-  events.forEach((event) => {
+export default function EventLog(props: EventLogProps) {
+  const eventsToDisplay: JSX.Element[] = [];
+  const deltaEvents = new Map<RealtimeEvent["type"], RealtimeEvent>();
+
+  props.events.forEach((event) => {
     if (event.type.endsWith("delta")) {
+      // @ts-expect-error
       if (deltaEvents[event.type]) {
         // for now just log a single event per render pass
         return;
       } else {
+        // @ts-expect-error
         deltaEvents[event.type] = event;
       }
     }
@@ -83,13 +91,13 @@ export default function EventLog({ events }: { events: RealtimeEvent[] }) {
     <div className="flex flex-col gap-2 w-full relative">
       <div className="absolute top-0 right-0 z-10">
         <button
-          onClick={() => downloadJson(events, "event-log.json")}
+          onClick={() => downloadJson(props.events, EVENT_LOG_FILE_NAME)}
           className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
         >
           Export JSON
         </button>
       </div>
-      {events.length === 0 ? (
+      {props.events.length === 0 ? (
         <div className="text-gray-500">Awaiting events...</div>
       ) : (
         eventsToDisplay

@@ -78,7 +78,7 @@ export type Session = {
   turn_detection: TurnDetectionConfig | null;
   tools: Tool[];
   temperature: number;
-  max_response_output_tokens: string | number;
+  max_response_output_tokens: "inf" | number;
 };
 
 class RealtimeConnection {
@@ -164,8 +164,8 @@ export const createSelectors = <S extends StoreApi<object>>(_store: S) => {
   const store = _store as WithSelectors<typeof _store>;
   store.use = {};
   for (const k of Object.keys(store.getState())) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (store.use as any)[k] = () =>
+      // @ts-expect-error
       // eslint-disable-next-line react-hooks/rules-of-hooks
       useStore(_store, (s) => s[k as keyof typeof s]);
   }
@@ -201,7 +201,7 @@ const store = create(
       set({ activeView: view }),
 
     showSettings: false,
-    setShowSettings: (show: boolean) => set({ showSettings: show }),
+    setShowSettings: (showSettings: boolean) => set({ showSettings }),
 
     autoUpdateSession: true,
     setAutoUpdateSession: (autoUpdateSession: boolean) =>
@@ -235,11 +235,12 @@ const store = create(
 
     events: [] as RealtimeEvent[],
     addEvent: (event: RealtimeEvent) =>
+      // @ts-expect-error
       set((state) => ({ events: [event, ...state.events] })),
     clearEvents: () => set({ events: [] }),
 
-    prompts: [] as ListPromptsResult["prompts"][],
-    setPrompts: (prompts: ListPromptsResult["prompts"][]) => set({ prompts }),
+    prompts: [] as ListPromptsResult["prompts"],
+    setPrompts: (prompts: ListPromptsResult["prompts"]) => set({ prompts }),
 
     conversation: new Conversation(),
 

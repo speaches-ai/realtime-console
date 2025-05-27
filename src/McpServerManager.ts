@@ -3,7 +3,7 @@ import {
   ClientOptions,
 } from "@modelcontextprotocol/sdk/client/index.js";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
-import {
+import type {
   ListToolsResult,
   CallToolResult,
   CallToolRequest,
@@ -13,8 +13,8 @@ import {
   ListResourceTemplatesResult,
   Implementation,
   ServerCapabilities,
-  CallToolResultSchema,
-} from "@modelcontextprotocol/sdk/types.js";
+  GetPromptResult,
+} from "@modelcontextprotocol/sdk/types.d.ts";
 
 // For uploading file from Claude App
 // type SseMcpServer = {
@@ -225,27 +225,31 @@ export class McpManager {
       const serverTools = await server.listTools();
       if (serverTools.tools.some((tool) => tool.name === params.name)) {
         console.log(`Calling tool ${params.name} on server ${server.name}`);
-        return await server.client.callTool(params);
+        // @ts-expect-error
+        return await server.client.callTool(params, CallToolResult);
       }
     }
 
     // If we get here, the cache was out of date
-    throw new Error(`Tool ${params.name} not found (cache miss)`);
+    throw new Error(`Tool ${params.name} not found`);
   }
 
-  // FIXME: returns string rather than proxying the output
-  async getPrompt(name: string): Promise<string | null> {
+  async getPrompt(name: string): Promise<GetPromptResult> {
+    const prompts = await this.listPrompts();
+
+    if (!prompts.prompts.some((prompt) => prompt.name === name)) {
+      throw new Error(`No client found with prompt: ${name}`);
+    }
+
     for (const server of this.servers.values()) {
-      try {
-        const result = await server.client.getPrompt({ name, arguments: {} }); // HACK
-        if (result.content) {
-          return result.content;
-        }
-      } catch (error) {
-        console.error("Failed to fetch prompt:", error);
+      const serverPrompts = await server.listPrompts();
+      if (serverPrompts.prompts.some((prompt) => prompt.name === name)) {
+        console.log(`Fetching prompt ${name} from server ${server.name}`);
+        return await server.client.getPrompt({ name, arguments: {} }); // HACK
       }
     }
-    return null;
+
+    throw new Error(`Prompt ${name} not found`);
   }
 
   async listPrompts(): Promise<ListPromptsResult> {

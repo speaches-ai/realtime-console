@@ -6,7 +6,7 @@ import useStore from "../store";
 type Tab = "connection" | "mcp-servers";
 
 export function Settings() {
-  const { setShowSettings, mcpManager } = useStore();
+  const { setShowSettings } = useStore();
   const [activeTab, setActiveTab] = useState<Tab>("connection");
 
   useEffect(() => {
@@ -59,9 +59,7 @@ export function Settings() {
         {/* Content area */}
         <div className="flex-1 p-6 overflow-y-auto">
           {activeTab === "connection" && <ConnectionSettings />}
-          {activeTab === "mcp-servers" && (
-            <McpServerList mcpManager={mcpManager} />
-          )}
+          {activeTab === "mcp-servers" && <McpServerList />}
         </div>
       </div>
     </div>
