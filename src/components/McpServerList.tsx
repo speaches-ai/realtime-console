@@ -24,21 +24,6 @@ export function McpServerList({
   const [newServerUrl, setNewServerUrl] = useState("");
   const [newServerName, setNewServerName] = useState("");
 
-  // Reconnect to enabled saved servers on mount
-  useEffect(() => {
-    servers.forEach(async (server) => {
-      if (server.enabled) {
-        try {
-          await clientManager.addServer(server.name, server.url);
-        } catch (error) {
-          console.error(
-            `Failed to reconnect to MCP server ${server.url}:`,
-            error,
-          );
-        }
-      }
-    });
-  }, []); // Empty deps array means this runs once on mount
 
   // Save servers to localStorage whenever they change
   useEffect(() => {
@@ -77,8 +62,7 @@ export function McpServerList({
   };
 
   return (
-    <div className="mb-4">
-      <h3 className="text-lg font-semibold mb-2">MCP Servers</h3>
+    <div>
       <div className="flex flex-col gap-2">
         {servers.map((server) => (
           <div key={server.name} className="flex items-center gap-2">

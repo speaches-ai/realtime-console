@@ -96,7 +96,7 @@ export function SessionConfiguration(props: SessionConfigurationProps) {
       setTranscriptionModels(data.data.map((model) => model.id));
     }
     async function fetchTools() {
-      await sleep(500);
+      await sleep(1000);
       const tools = await props.mcpManager.listTools();
       console.log("Available tools:", tools);
       const openaiTools = mcpToolsToOpenAI(tools);
@@ -385,9 +385,26 @@ export function SessionConfiguration(props: SessionConfigurationProps) {
         />
       </div>
 
-      <Button type="submit" className="mt-4">
-        Update Session Configuration
-      </Button>
+      <div className="flex gap-2 mt-4">
+        <Button type="submit">Update Session Configuration</Button>
+        <Button
+          type="button"
+          onClick={() => {
+            const dataStr = JSON.stringify(sessionConfig, null, 2);
+            const dataBlob = new Blob([dataStr], { type: "application/json" });
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = "session-config.json";
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+          }}
+        >
+          Export Settings
+        </Button>
+      </div>
     </form>
   );
 }

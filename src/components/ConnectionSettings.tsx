@@ -1,5 +1,9 @@
 import { SingleRowInput } from "./shared";
 
+const saveToLocalStorage = (key: string, value: string) => {
+  localStorage.setItem(`connection-${key}`, value);
+};
+
 export function ConnectionSettings(props: {
   baseUrl: string;
   setBaseUrl: (arg0: string) => void;
@@ -7,18 +11,23 @@ export function ConnectionSettings(props: {
   setModel: (arg0: string) => void;
 }) {
   return (
-    <section className="flex flex-col flex-1 border-gray-200">
-      <h1>Connection Settings</h1>
+    <section className="flex flex-col flex-1">
       <form>
         <SingleRowInput
           label="Base URL"
           value={props.baseUrl}
-          onChange={props.setBaseUrl}
+          onChange={(value) => {
+            props.setBaseUrl(value);
+            saveToLocalStorage("baseUrl", value);
+          }}
         />
         <SingleRowInput
           label="Model"
           value={props.model}
-          onChange={props.setModel}
+          onChange={(value) => {
+            props.setModel(value);
+            saveToLocalStorage("model", value);
+          }}
         />
       </form>
     </section>

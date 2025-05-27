@@ -3,8 +3,7 @@ import Button from "./Button";
 import EventLog from "./EventLog";
 import SessionControls from "./SessionControls";
 import { SessionConfiguration } from "./SessionConfiguration";
-import { ConnectionSettings } from "./ConnectionSettings";
-import { McpServerList } from "./McpServerList";
+import { Settings } from "./Settings";
 import { PromptList } from "./PromptList";
 import {
   Conversation,
@@ -154,12 +153,17 @@ for (const [type, handler] of Object.entries(eventHandlers)) {
 }
 
 export default function App() {
-  const [baseUrl, setBaseUrl] = useState("http://localhost:8000/v1");
-  const [model, setModel] = useState("gpt-4o-mini");
+  const [baseUrl, setBaseUrl] = useState(() => {
+    return localStorage.getItem("connection-baseUrl") || "http://localhost:8000/v1";
+  });
+  const [model, setModel] = useState(() => {
+    return localStorage.getItem("connection-model") || "gpt-4o-mini";
+  });
   const [isSessionActive, setIsSessionActive] = useState(false);
   const [events, setEvents] = useState<RealtimeEvent[]>([]);
   const [dataChannel, setDataChannel] = useState<RTCDataChannel | null>(null);
   const [activeView, setActiveView] = useState<'conversation' | 'events'>('conversation');
+  const [showSettings, setShowSettings] = useState(false);
   const [autoUpdateSession, setAutoUpdateSession] = useState(true);
   const [prompts, setPrompts] = useState<ListPromptsResult["prompts"]>([]);
   const [sessionConfig, setSessionConfig] = useState<Session>(() => {
@@ -195,8 +199,27 @@ export default function App() {
     localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(sessionConfig));
   }, [sessionConfig]);
 
-  // Fetch prompts on component mount
+  // Initialize MCP servers and fetch prompts on component mount
   useEffect(() => {
+    const STORAGE_KEY = "mcp-servers";
+    const savedServers = localStorage.getItem(STORAGE_KEY);
+    const servers = savedServers ? JSON.parse(savedServers) : [];
+
+    // Connect to enabled MCP servers
+    servers.forEach(async (server: { name: string, url: string, enabled: boolean }) => {
+      if (server.enabled) {
+        try {
+          await mcpManager.addServer(server.name, server.url);
+        } catch (error) {
+          console.error(
+            `Failed to reconnect to MCP server ${server.url}:`,
+            error,
+          );
+        }
+      }
+    });
+
+    // Fetch prompts after a delay
     async function fetchPrompts() {
       try {
         await sleep(1000);
@@ -252,7 +275,7 @@ export default function App() {
   }, [autoUpdateSession, sessionConfig]);
   // const [triedToConnect, setTriedToConnect] = useState(false);
 
-  async function startSession() {
+  async function startSession(deviceId?: string) {
     // Get an ephemeral key from the Express server
     let EPHEMERAL_KEY = "cant-be-empty";
     if (baseUrl.includes("api.openai.com")) {
@@ -270,7 +293,9 @@ export default function App() {
 
     // Add local audio track for microphone input in the browser
     const ms = await navigator.mediaDevices.getUserMedia({
-      audio: true,
+      audio: {
+        deviceId: dataChannel?.selectedDeviceId
+      }
     });
     pc.addTrack(ms.getTracks()[0]);
 
@@ -365,6 +390,20 @@ export default function App() {
   //   }
   // }, [triedToConnect]);
   // Attach event listeners to the data channel when a new one is created
+  // Add keyboard shortcut listener for settings
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      // Check for Ctrl/Cmd + ,
+      if ((e.ctrlKey || e.metaKey) && e.key === ',') {
+        e.preventDefault();
+        setShowSettings(prev => !prev);
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, []);
+
   useEffect(() => {
     if (dataChannel) {
       // Append new server events to the list
@@ -384,8 +423,9 @@ export default function App() {
   return (
     <div className="flex flex-col h-screen">
       <nav className="h-16 flex items-center">
-        <div className="flex items-center gap-4 w-full m-4 pb-2 border-0 border-b border-solid border-gray-200">
+        <div className="flex items-center justify-between gap-4 w-full m-4 pb-2 border-0 border-b border-solid border-gray-200">
           <h1>Speaches Realtime Console</h1>
+          <Button onClick={() => setShowSettings(true)}>Settings</Button>
         </div>
       </nav>
       <main className="flex flex-1 overflow-y-scroll">
@@ -430,13 +470,6 @@ export default function App() {
           </section>
         </section>
         <section className="w-96 p-4 pt-0 overflow-y-auto border-l">
-          <ConnectionSettings
-            baseUrl={baseUrl}
-            setBaseUrl={setBaseUrl}
-            model={model}
-            setModel={setModel}
-          />
-          <McpServerList mcpManager={mcpManager} />
           <SessionConfiguration
             sendEvent={sendClientEvent}
             mcpManager={mcpManager}
@@ -451,6 +484,16 @@ export default function App() {
           </div>
         </section>
       </main>
+      {showSettings && (
+        <Settings
+          baseUrl={baseUrl}
+          setBaseUrl={setBaseUrl}
+          model={model}
+          setModel={setModel}
+          mcpManager={mcpManager}
+          onClose={() => setShowSettings(false)}
+        />
+      )}
     </div>
   );
 }

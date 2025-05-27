@@ -40,6 +40,18 @@ function Event({
   );
 }
 
+function downloadJson(data: any, filename: string) {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
 export default function EventLog({ events }: { events: RealtimeEvent[] }) {
   const eventsToDisplay: JSX.Element[] = [];
   const deltaEvents = {};
@@ -64,7 +76,15 @@ export default function EventLog({ events }: { events: RealtimeEvent[] }) {
   });
 
   return (
-    <div className="flex flex-col gap-2 overflow-x-auto">
+    <div className="flex flex-col gap-2 overflow-x-auto relative">
+      <div className="absolute top-0 right-0">
+        <button
+          onClick={() => downloadJson(events, 'event-log.json')}
+          className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
+        >
+          Export JSON
+        </button>
+      </div>
       {events.length === 0 ? (
         <div className="text-gray-500">Awaiting events...</div>
       ) : (
