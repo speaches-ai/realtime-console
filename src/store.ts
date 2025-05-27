@@ -254,8 +254,8 @@ const store = create(
       localStorage.setItem(SELECTED_MICROPHONE_STORAGE_KEY, deviceId);
       set({ selectedMicrophone: deviceId });
     },
-    audioDevices: [] as string[],
-    setAudioDevices: (devices: string[]) => set({ audioDevices: devices }),
+    audioDevices: [] as MediaDeviceInfo[],
+    setAudioDevices: (audioDevices: MediaDeviceInfo[]) => set({ audioDevices }),
 
     // Realtime connection
     realtimeConnection: new RealtimeConnection(),
