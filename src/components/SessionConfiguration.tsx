@@ -76,9 +76,13 @@ export function SessionConfiguration() {
     if (voices.length === 0 && !isLoadingVoices) {
       setIsLoadingVoices(true);
       try {
-        const res = await fetch(`${baseUrl}/audio/speech/voices`);
+        const res = await fetch(`${baseUrl}/models?task=text-to-speech`);
         const data = await res.json();
-        setVoices(data.map((voice: { voice_id: string }) => voice.voice_id));
+        const models = data.data;
+        const voiceNames = models
+          .flatMap((model) => model.voices)
+          .map((voice) => voice.name);
+        setVoices(voiceNames);
       } catch (error) {
         console.error("Failed to fetch voices:", error);
       } finally {
