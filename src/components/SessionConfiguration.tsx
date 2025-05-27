@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import Button from "./Button";
 import { SliderInput } from "./shared";
-import useStore from "../store";
+import useStore, { DEFAULT_SESSION_CONFIG } from "../store";
 import { ListToolsResult } from "@modelcontextprotocol/sdk/types.js";
+import { downloadJsonFile } from "../utils";
 
 type Tool = {
   type: "function";
@@ -181,7 +182,6 @@ export function SessionConfiguration() {
             onChange={async (e) => {
               if (e.target.value) {
                 const content = await mcpManager.getPrompt(e.target.value);
-                console.log("Prompt content:", content);
                 if (content) {
                   handleChange("instructions", content);
                 }
@@ -298,13 +298,10 @@ export function SessionConfiguration() {
                 name="turn_detection_type"
                 checked={sessionConfig.turn_detection !== null}
                 onChange={() =>
-                  handleChange("turn_detection", {
-                    type: "server_vad",
-                    threshold: 0.5,
-                    prefix_padding_ms: 1000,
-                    silence_duration_ms: 700,
-                    create_response: true,
-                  })
+                  handleChange(
+                    "turn_detection",
+                    DEFAULT_SESSION_CONFIG.turn_detection,
+                  )
                 }
                 className="border-gray-300"
               />
@@ -331,7 +328,10 @@ export function SessionConfiguration() {
             <div className="space-y-3 pl-6">
               <SliderInput
                 label="Threshold"
-                value={sessionConfig.turn_detection.threshold ?? 0.5}
+                value={
+                  sessionConfig.turn_detection.threshold ??
+                  DEFAULT_SESSION_CONFIG.turn_detection.threshold
+                }
                 onChange={(value) =>
                   handleChange("turn_detection", {
                     ...sessionConfig.turn_detection,
@@ -345,7 +345,10 @@ export function SessionConfiguration() {
 
               <SliderInput
                 label="Silence Duration (ms)"
-                value={sessionConfig.turn_detection.silence_duration_ms ?? 700}
+                value={
+                  sessionConfig.turn_detection.silence_duration_ms ??
+                  DEFAULT_SESSION_CONFIG.turn_detection.silence_duration_ms
+                }
                 onChange={(value) =>
                   handleChange("turn_detection", {
                     ...sessionConfig.turn_detection,
@@ -361,7 +364,10 @@ export function SessionConfiguration() {
                 <input
                   type="checkbox"
                   id="create_response"
-                  checked={sessionConfig.turn_detection.create_response ?? true}
+                  checked={
+                    sessionConfig.turn_detection.create_response ??
+                    DEFAULT_SESSION_CONFIG.turn_detection.create_response
+                  }
                   onChange={(e) =>
                     handleChange("turn_detection", {
                       ...sessionConfig.turn_detection,
@@ -385,7 +391,9 @@ export function SessionConfiguration() {
       <div>
         <SliderInput
           label="Temperature"
-          value={sessionConfig.temperature ?? 0.8}
+          value={
+            sessionConfig.temperature ?? DEFAULT_SESSION_CONFIG.temperature
+          }
           onChange={(value) => handleChange("temperature", value)}
           min={0.6}
           max={1.2}
@@ -403,7 +411,12 @@ export function SessionConfiguration() {
           onChange={(e) =>
             handleChange(
               "max_response_output_tokens",
-              e.target.value === "inf" ? "inf" : parseInt(e.target.value),
+              // TODO: figure out a nicer way to handle "inf" value and possible NaN
+              e.target.value === "inf"
+                ? "inf"
+                : parseInt(e.target.value)
+                  ? parseInt(e.target.value)
+                  : DEFAULT_SESSION_CONFIG.max_response_output_tokens,
             )
           }
           className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
@@ -414,18 +427,7 @@ export function SessionConfiguration() {
         <Button type="submit">Update Session Configuration</Button>
         <Button
           type="button"
-          onClick={() => {
-            const dataStr = JSON.stringify(sessionConfig, null, 2);
-            const dataBlob = new Blob([dataStr], { type: "application/json" });
-            const url = URL.createObjectURL(dataBlob);
-            const link = document.createElement("a");
-            link.href = url;
-            link.download = "session-config.json";
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-          }}
+          onClick={() => downloadJsonFile(sessionConfig, "session-config.json")}
         >
           Export Settings
         </Button>

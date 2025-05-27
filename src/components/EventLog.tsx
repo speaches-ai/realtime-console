@@ -1,6 +1,7 @@
 import { ArrowUp, ArrowDown } from "react-feather";
 import { JSX, useState } from "react";
 import { RealtimeEvent } from "../types";
+import { downloadJsonFile } from "../utils";
 
 const EVENT_LOG_FILE_NAME = "event-log.json";
 
@@ -44,20 +45,6 @@ function Event({
   );
 }
 
-function downloadJson(data: RealtimeEvent[], filename: string) {
-  const blob = new Blob([JSON.stringify(data, null, 2)], {
-    type: "application/json",
-  });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
-}
-
 export type EventLogProps = {
   events: RealtimeEvent[];
 };
@@ -91,7 +78,7 @@ export default function EventLog(props: EventLogProps) {
     <div className="flex flex-col gap-2 w-full relative">
       <div className="absolute top-0 right-0 z-10">
         <button
-          onClick={() => downloadJson(props.events, EVENT_LOG_FILE_NAME)}
+          onClick={() => downloadJsonFile(props.events, EVENT_LOG_FILE_NAME)}
           className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
         >
           Export JSON
