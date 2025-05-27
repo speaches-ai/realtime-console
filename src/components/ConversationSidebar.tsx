@@ -67,20 +67,37 @@ export function ConversationSidebar() {
   };
   
   const handleAddSession = () => {
-    addConversationSession({});
+    // Get current state to check if the conversation is empty
+    const { events, conversation } = useStore.getState();
+    
+    // Only create a new conversation if the current one has events or messages
+    if (events.length > 0 || conversation.items.size > 0) {
+      addConversationSession({
+        title: `New Conversation ${new Date().toLocaleString()}`
+      });
+      
+      // Clear the current view
+      useStore.getState().clearEvents();
+      useStore.setState({ conversation: new Conversation() });
+    }
   };
   
   return (
     <aside className="w-64 h-full overflow-y-auto border-r bg-gray-50 flex flex-col flex-shrink-0">
       <div className="p-3 border-b flex justify-between items-center">
         <h2 className="text-sm font-bold">Conversations</h2>
-        <button
-          onClick={handleAddSession}
-          className="p-1 rounded-full hover:bg-gray-200"
-          title="New conversation"
-        >
-          <Menu size={18} />
-        </button>
+        <div className="relative group">
+          <button
+            onClick={handleAddSession}
+            className="p-1 rounded-full hover:bg-gray-200"
+            aria-label="New conversation"
+          >
+            <Menu size={18} />
+          </button>
+          <div className="absolute right-0 top-full mt-1 bg-gray-800 text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+            New conversation (⌘/Ctrl+Shift+O)
+          </div>
+        </div>
       </div>
       
       <div className="flex-1 overflow-y-auto">

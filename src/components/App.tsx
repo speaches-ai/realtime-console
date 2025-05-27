@@ -36,6 +36,7 @@ export default function App() {
     sessionConfig,
     currentSessionId,
     conversationSessions,
+    addConversationSession,
   } = useStore();
   
   // State for sidebar visibility
@@ -247,11 +248,37 @@ export default function App() {
         e.preventDefault();
         setShowSidebar(!showSidebar);
       }
+      
+      // Check for Ctrl/Cmd + Shift + O to create a new conversation
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "o") {
+        e.preventDefault();
+        
+        // Only create a new conversation if the current one has events
+        if (events.length > 0 || conversation.items.size > 0) {
+          // Create a new conversation session
+          addConversationSession({
+            title: `New Conversation ${new Date().toLocaleString()}`
+          });
+          
+          // Clear the UI
+          clearEvents();
+          useStore.setState({ conversation: new Conversation() });
+        }
+      }
     };
 
     window.addEventListener("keydown", handleKeyPress);
     return () => window.removeEventListener("keydown", handleKeyPress);
-  }, [setShowSettings, showSettings, showSidebar, setShowSidebar]);
+  }, [
+    setShowSettings, 
+    showSettings, 
+    showSidebar, 
+    setShowSidebar, 
+    addConversationSession, 
+    clearEvents,
+    events.length,
+    conversation.items.size
+  ]);
   
   // Load conversation data when currentSessionId changes
   useEffect(() => {

@@ -1,9 +1,10 @@
 import { McpServerList } from "./McpServerList";
 import { ConnectionSettings } from "./ConnectionSettings";
+import { DataManagement } from "./DataManagement";
 import { useState, useEffect } from "react";
 import useStore from "../store";
 
-type Tab = "connection" | "mcp-servers";
+type Tab = "connection" | "mcp-servers" | "data-management";
 
 export function Settings() {
   const { setShowSettings } = useStore();
@@ -23,6 +24,7 @@ export function Settings() {
   const tabs: { id: Tab; label: string }[] = [
     { id: "connection", label: "Connection Settings" },
     { id: "mcp-servers", label: "MCP Servers" },
+    { id: "data-management", label: "Data Management" },
   ];
 
   return (
@@ -60,6 +62,7 @@ export function Settings() {
         <div className="flex-1 p-6 overflow-y-auto">
           {activeTab === "connection" && <ConnectionSettings />}
           {activeTab === "mcp-servers" && <McpServerList />}
+          {activeTab === "data-management" && <DataManagement />}
         </div>
       </div>
     </div>

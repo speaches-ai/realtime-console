@@ -29,7 +29,6 @@ export function ErrorAlert({ message, onClose, duration = 5000 }: ErrorAlertProp
             {JSON.stringify(parsed, null, 2)}
           </pre>
         );
-      // eslint-disable-next-line no-empty
       } catch {
         // Not valid JSON, return as is
         return msg;
