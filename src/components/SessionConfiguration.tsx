@@ -4,7 +4,6 @@ import Button from "./Button";
 import { SliderInput } from "./shared";
 import useAppStore from "../store";
 import { ListToolsResult } from "@modelcontextprotocol/sdk/types.js";
-import { sleep } from "../utils";
 
 type Tool = {
   type: "function";
@@ -23,24 +22,30 @@ function mcpToolsToOpenAI(tools: ListToolsResult): Tool[] {
 }
 
 export function SessionConfiguration() {
-  const { 
-    sessionConfig, 
-    setSessionConfig, 
-    autoUpdateSession, 
-    setAutoUpdateSession, 
-    mcpManager, 
+  const {
+    sessionConfig,
+    setSessionConfig,
+    autoUpdateSession,
+    setAutoUpdateSession,
+    mcpManager,
     prompts,
     setPrompts,
-    realtimeConnection
+    realtimeConnection,
   } = useAppStore();
-  
+
   const [voices, setVoices] = useState<string[]>([]);
   const [transcriptionModels, setTranscriptionModels] = useState<string[]>([]);
   const [isLoadingPrompts, setIsLoadingPrompts] = useState(false);
+  const [isLoadingVoices, setIsLoadingVoices] = useState(false);
+  const [isLoadingTranscriptionModels, setIsLoadingTranscriptionModels] =
+    useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    realtimeConnection.sendEvent({ type: "session.update", session: sessionConfig });
+    realtimeConnection.sendEvent({
+      type: "session.update",
+      session: sessionConfig,
+    });
   };
 
   const handleChange = (field: keyof typeof sessionConfig, value: any) => {
@@ -65,29 +70,47 @@ export function SessionConfiguration() {
     }
   };
 
+  const handleVoiceDropdownClick = async () => {
+    if (voices.length === 0 && !isLoadingVoices) {
+      setIsLoadingVoices(true);
+      try {
+        const res = await fetch("http://localhost:8000/v1/audio/speech/voices");
+        const data = await res.json();
+        setVoices(data.map((voice: { voice_id: string }) => voice.voice_id));
+      } catch (error) {
+        console.error("Failed to fetch voices:", error);
+      } finally {
+        setIsLoadingVoices(false);
+      }
+    }
+  };
+
+  const handleTranscriptionModelDropdownClick = async () => {
+    if (transcriptionModels.length === 0 && !isLoadingTranscriptionModels) {
+      setIsLoadingTranscriptionModels(true);
+      try {
+        const res = await fetch("http://localhost:8000/v1/models");
+        const data = await res.json();
+        setTranscriptionModels(
+          data.data.map((model: { id: string }) => model.id),
+        );
+      } catch (error) {
+        console.error("Failed to fetch transcription models:", error);
+      } finally {
+        setIsLoadingTranscriptionModels(false);
+      }
+    }
+  };
+
   useEffect(() => {
-    async function fetchVoices() {
-      const res = await fetch("http://localhost:8000/v1/audio/speech/voices");
-      const data = await res.json();
-      setVoices(data.map((voice: { voice_id: string }) => voice.voice_id));
-    }
-    async function fetchTranscriptionModels() {
-      const res = await fetch("http://localhost:8000/v1/models");
-      const data = await res.json();
-      setTranscriptionModels(data.data.map((model: { id: string }) => model.id));
-    }
-    async function fetchTools() {
-      await sleep(400);
+    mcpManager.onServerInitialized(async () => {
       const tools = await mcpManager.listTools();
       console.log("Available tools:", tools);
       const openaiTools = mcpToolsToOpenAI(tools);
       handleChange("tools", openaiTools);
-    }
-    fetchVoices();
-    fetchTranscriptionModels();
-    fetchTools();
-  }, [mcpManager]);
-  
+    });
+  }, []);
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4 p-4">
       <div className="flex items-center gap-2">
@@ -153,9 +176,7 @@ export function SessionConfiguration() {
             onClick={handlePromptDropdownClick}
             onChange={async (e) => {
               if (e.target.value) {
-                const content = await mcpManager.getPrompt(
-                  e.target.value,
-                );
+                const content = await mcpManager.getPrompt(e.target.value);
                 console.log("Prompt content:", content);
                 if (content) {
                   handleChange("instructions", content);
@@ -188,14 +209,21 @@ export function SessionConfiguration() {
         <label className="block text-sm font-medium text-gray-700">Voice</label>
         <select
           value={sessionConfig.voice}
+          onClick={handleVoiceDropdownClick}
           onChange={(e) => handleChange("voice", e.target.value)}
           className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
         >
-          {voices.map((voice) => (
-            <option key={voice} value={voice}>
-              {voice}
-            </option>
-          ))}
+          {isLoadingVoices ? (
+            <option disabled>Loading voices...</option>
+          ) : voices.length === 0 ? (
+            <option disabled>Click to load voices</option>
+          ) : (
+            voices.map((voice) => (
+              <option key={voice} value={voice}>
+                {voice}
+              </option>
+            ))
+          )}
         </select>
       </div>
 
@@ -210,6 +238,7 @@ export function SessionConfiguration() {
 
               <select
                 value={sessionConfig.input_audio_transcription.model}
+                onClick={handleTranscriptionModelDropdownClick}
                 onChange={(e) =>
                   handleChange("input_audio_transcription", {
                     ...sessionConfig.input_audio_transcription,
@@ -218,11 +247,17 @@ export function SessionConfiguration() {
                 }
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
               >
-                {transcriptionModels.map((model) => (
-                  <option key={model} value={model}>
-                    {model}
-                  </option>
-                ))}
+                {isLoadingTranscriptionModels ? (
+                  <option disabled>Loading transcription models...</option>
+                ) : transcriptionModels.length === 0 ? (
+                  <option disabled>Click to load transcription models</option>
+                ) : (
+                  transcriptionModels.map((model) => (
+                    <option key={model} value={model}>
+                      {model}
+                    </option>
+                  ))
+                )}
               </select>
             </div>
 

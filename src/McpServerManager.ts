@@ -13,8 +13,10 @@ import {
   ListResourceTemplatesResult,
   Implementation,
   ServerCapabilities,
+  CallToolResultSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 
+// For uploading file from Claude App
 // type SseMcpServer = {
 //   url: string;
 // };
@@ -110,20 +112,62 @@ class Server {
   }
 }
 
+export type ServerInitializedEvent = {
+  serverName: string;
+  capabilities: ServerCapabilities;
+};
+
+export type ServerInitializedCallback = (event: ServerInitializedEvent) => void;
+
 export class McpManager {
   private servers: Map<string, Server> = new Map();
+  private serverInitializedListeners: Set<ServerInitializedCallback> =
+    new Set();
+
+  onServerInitialized(callback: ServerInitializedCallback): () => void {
+    this.serverInitializedListeners.add(callback);
+
+    // Return a function to remove the listener
+    return () => {
+      this.serverInitializedListeners.delete(callback);
+    };
+  }
+
+  private notifyServerInitialized(
+    serverName: string,
+    capabilities: ServerCapabilities,
+  ) {
+    const event: ServerInitializedEvent = {
+      serverName,
+      capabilities,
+    };
+
+    this.serverInitializedListeners.forEach((listener) => {
+      try {
+        listener(event);
+      } catch (error) {
+        console.error("Error in server initialized listener:", error);
+      }
+    });
+  }
 
   async addServer(name: string, url: string) {
     const transport = new SSEClientTransport(new URL(url));
     const client = new Client(implementation, clientOptions);
     await client.connect(transport);
     const serverCapabilities = client.getServerCapabilities();
+    if (!serverCapabilities) {
+      throw new Error("Failed to fetch server capabilities");
+    }
     console.log(
       `Connected to server ${name} with capabilities:`,
       serverCapabilities,
     );
     const server = new Server(name, client, serverCapabilities);
     this.servers.set(name, server);
+
+    // Notify listeners about the newly initialized server
+    this.notifyServerInitialized(name, serverCapabilities);
   }
 
   async removeServer(name: string) {
@@ -189,6 +233,7 @@ export class McpManager {
     throw new Error(`Tool ${params.name} not found (cache miss)`);
   }
 
+  // FIXME: returns string rather than proxying the output
   async getPrompt(name: string): Promise<string | null> {
     for (const server of this.servers.values()) {
       try {
