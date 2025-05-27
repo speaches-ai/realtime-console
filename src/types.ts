@@ -3,4 +3,6 @@ import {
   RealtimeServerEvent,
 } from "openai/resources/beta/realtime/realtime";
 
-export type RealtimeEvent = RealtimeClientEvent | RealtimeServerEvent;
+export type RealtimeEvent = (RealtimeClientEvent | RealtimeServerEvent) & {
+  timestamp?: string;
+};

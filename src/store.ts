@@ -236,9 +236,15 @@ const store = create(
     },
 
     events: [] as RealtimeEvent[],
-    addEvent: (event: RealtimeEvent) =>
+    addEvent: (event: RealtimeEvent) => {
+      // Add timestamp when the event is captured
+      const eventWithTimestamp = {
+        ...event,
+        timestamp: new Date().toISOString()
+      };
       // @ts-expect-error
-      set((state) => ({ events: [event, ...state.events] })),
+      set((state) => ({ events: [eventWithTimestamp, ...state.events] }));
+    },
     clearEvents: () => set({ events: [] }),
 
     prompts: [] as ListPromptsResult["prompts"],

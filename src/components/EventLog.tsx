@@ -7,10 +7,8 @@ const EVENT_LOG_FILE_NAME = "event-log.json";
 
 function Event({
   event,
-  timestamp,
 }: {
   event: RealtimeEvent;
-  timestamp: string;
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -29,7 +27,7 @@ function Event({
         )}
         <div className="text-sm text-gray-500 truncate">
           {isClient ? "client:" : "server:"}
-          &nbsp;{event.type} | {timestamp}
+          &nbsp;{event.type} | {event.timestamp ? new Date(event.timestamp).toLocaleTimeString() : 'unknown time'}
         </div>
       </div>
       {isExpanded && (
@@ -69,7 +67,6 @@ export default function EventLog(props: EventLogProps) {
       <Event
         key={event.event_id}
         event={event}
-        timestamp={new Date().toLocaleTimeString()}
       />,
     );
   });
