@@ -141,13 +141,31 @@ export function conversationItemFromOpenAI(
 
 export class Conversation {
   items: Map<string, ConversationItem>;
+  onUpdate?: () => void;
 
-  constructor() {
+  constructor(initialItems?: Record<string, ConversationItem>) {
     this.items = new Map();
+    
+    // Load initial items if provided
+    if (initialItems) {
+      Object.entries(initialItems).forEach(([id, item]) => {
+        this.items.set(id, item);
+      });
+    }
+  }
+  
+  // Save conversation items to a serializable format
+  serialize(): Record<string, ConversationItem> {
+    const serialized: Record<string, ConversationItem> = {};
+    this.items.forEach((item, key) => {
+      serialized[key] = item;
+    });
+    return serialized;
   }
 
   upsertItem(item: ConversationItem) {
     this.items.set(item.id, item);
+    this.notifyUpdate();
   }
 
   addItemContent(id: string, content: ConversationItemContent) {
@@ -155,6 +173,7 @@ export class Conversation {
     if (item) {
       if (item.type === "message") {
         item.content.push(content);
+        this.notifyUpdate();
       } else {
         console.error("Cannot add content to a non-message item");
       }
@@ -182,17 +201,33 @@ export class Conversation {
 
     if (content.type === "text") {
       content.text += delta;
+      this.notifyUpdate();
     } else if (content.type === "audio") {
       content.transcript += delta;
+      this.notifyUpdate();
     } else if (content.type === "input_text") {
       content.text += delta;
+      this.notifyUpdate();
     } else if (content.type === "input_audio") {
       if (content.transcript === null) {
         content.transcript = "";
       }
       content.transcript += delta;
+      this.notifyUpdate();
     } else if (content.type === "item_reference") {
       console.error("Cannot add delta to item reference content");
+    }
+  }
+  
+  // Register a callback for updates
+  setUpdateListener(callback: () => void) {
+    this.onUpdate = callback;
+  }
+  
+  // Notify when the conversation has been updated
+  private notifyUpdate() {
+    if (this.onUpdate) {
+      this.onUpdate();
     }
   }
 }

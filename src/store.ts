@@ -1,5 +1,5 @@
 import { create, StoreApi } from "zustand";
-import { RealtimeEvent } from "./types";
+import { ConversationSession, RealtimeEvent } from "./types";
 import { ListPromptsResult } from "@modelcontextprotocol/sdk/types.js";
 import { McpManager } from "./McpServerManager";
 import { Conversation } from "./components/Conversation";
@@ -18,6 +18,7 @@ const SESSION_STORAGE_KEY = "session-config";
 const BASE_URL_STORAGE_KEY = "connection-baseUrl";
 const MODEL_STORAGE_KEY = "connection-model";
 const SELECTED_MICROPHONE_STORAGE_KEY = "selected-microphone";
+const CONVERSATION_SESSIONS_KEY = "conversation-sessions";
 
 const DEFAULT_MODEL = "gpt-4o-mini";
 const DEFAULT_BASE_URL = "http://localhost:8000/v1";
@@ -178,6 +179,30 @@ export const createSelectors = <S extends StoreApi<object>>(_store: S) => {
   return store;
 };
 
+// Load conversation sessions from localStorage
+const loadConversationSessions = (): ConversationSession[] => {
+  try {
+    const saved = localStorage.getItem(CONVERSATION_SESSIONS_KEY);
+    if (saved && saved.trim()) {
+      return JSON.parse(saved);
+    }
+  } catch (error) {
+    console.error("Failed to parse conversation sessions from localStorage:", error);
+    // If there's an error, remove the invalid data
+    localStorage.removeItem(CONVERSATION_SESSIONS_KEY);
+  }
+  return [];
+};
+
+// Save conversation sessions to localStorage
+const saveConversationSessions = (sessions: ConversationSession[]) => {
+  try {
+    localStorage.setItem(CONVERSATION_SESSIONS_KEY, JSON.stringify(sessions));
+  } catch (error) {
+    console.error("Failed to save conversation sessions to localStorage:", error);
+  }
+};
+
 // Create the store
 const store = create(
   combine({}, (set, get) => ({
@@ -207,6 +232,53 @@ const store = create(
 
     showSettings: false,
     setShowSettings: (showSettings: boolean) => set({ showSettings }),
+      
+    // Conversation sessions management
+    conversationSessions: loadConversationSessions(),
+    currentSessionId: "",
+    
+    addConversationSession: (sessionData: Partial<ConversationSession>) => {
+      const state = get() as ExtractState<typeof useStore>;
+      const newSession: ConversationSession = {
+        id: sessionData.id || crypto.randomUUID(),
+        title: sessionData.title || `Session ${new Date().toLocaleString()}`,
+        timestamp: sessionData.timestamp || new Date().toISOString(),
+        events: sessionData.events || [],
+        conversationItems: sessionData.conversationItems || {}
+      };
+      
+      const updatedSessions = [...state.conversationSessions, newSession];
+      set({ 
+        conversationSessions: updatedSessions,
+        currentSessionId: newSession.id
+      });
+      saveConversationSessions(updatedSessions);
+      return newSession.id;
+    },
+    
+    updateConversationSession: (sessionId: string, updates: Partial<ConversationSession>) => {
+      const state = get() as ExtractState<typeof useStore>;
+      const updatedSessions = state.conversationSessions.map(session => 
+        session.id === sessionId ? { ...session, ...updates } : session
+      );
+      set({ conversationSessions: updatedSessions });
+      saveConversationSessions(updatedSessions);
+    },
+    
+    deleteConversationSession: (sessionId: string) => {
+      const state = get() as ExtractState<typeof useStore>;
+      const updatedSessions = state.conversationSessions.filter(session => session.id !== sessionId);
+      set({ 
+        conversationSessions: updatedSessions,
+        currentSessionId: state.currentSessionId === sessionId ? 
+          (updatedSessions[0]?.id || "") : state.currentSessionId
+      });
+      saveConversationSessions(updatedSessions);
+    },
+    
+    setCurrentSessionId: (sessionId: string) => {
+      set({ currentSessionId: sessionId });
+    },
 
     autoUpdateSession: true,
     setAutoUpdateSession: (autoUpdateSession: boolean) =>
@@ -245,8 +317,20 @@ const store = create(
         ...event,
         timestamp: new Date().toISOString()
       };
+      
+      const state = get() as ExtractState<typeof useStore>;
       // @ts-expect-error
       set((state) => ({ events: [eventWithTimestamp, ...state.events] }));
+      
+      // Also save the event to the current conversation session if one exists
+      if (state.currentSessionId) {
+        const session = state.conversationSessions.find(s => s.id === state.currentSessionId);
+        if (session) {
+          state.updateConversationSession(state.currentSessionId, {
+            events: [eventWithTimestamp, ...session.events]
+          });
+        }
+      }
     },
     clearEvents: () => set({ events: [] }),
 
@@ -374,13 +458,18 @@ const store = create(
           state.setIsSessionActive(true);
           // state.clearEvents();
 
+          // Create a new conversation session if none exists
+          const sessionId = state.currentSessionId || state.addConversationSession({});
+          state.setCurrentSessionId(sessionId);
+          
           // Auto-update session if enabled
-          // if (state.autoUpdateSession) {
-          //   state.realtimeConnection.sendEvent({
-          //     type: "session.update",
-          //     session: state.sessionConfig,
-          //   });
-          // }
+          if (state.autoUpdateSession) {
+            state.realtimeConnection.sendEvent({
+              type: "session.update",
+              // @ts-expect-error
+              session: state.sessionConfig,
+            });
+          }
         });
       } catch (error) {
         console.error("Failed to start session:", error);
