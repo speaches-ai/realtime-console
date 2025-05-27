@@ -1,12 +1,14 @@
-import { create, StoreApi, useStore } from "zustand";
+import { create, StoreApi } from "zustand";
 import { RealtimeEvent } from "./types";
 import { ListPromptsResult } from "@modelcontextprotocol/sdk/types.js";
 import { McpManager } from "./McpServerManager";
 import { Conversation } from "./components/Conversation";
+import { combine } from "zustand/middleware";
 import {
   RealtimeClientEvent,
   RealtimeServerEvent,
 } from "openai/resources/beta/realtime/realtime.mjs";
+import { ExtractState } from "zustand";
 
 // Create a singleton McpManager instance
 const mcpManager = new McpManager();
@@ -171,270 +173,223 @@ export const createSelectors = <S extends StoreApi<object>>(_store: S) => {
   return store;
 };
 
-// Define the store state
-interface State {
-  // Connection settings
-  baseUrl: string;
-  setBaseUrl: (url: string) => void;
-  model: string;
-  setModel: (model: string) => void;
-
-  // Session state
-  isSessionActive: boolean;
-  setIsSessionActive: (active: boolean) => void;
-  dataChannel: RTCDataChannel | null;
-  setDataChannel: (channel: RTCDataChannel | null) => void;
-
-  // View state
-  activeView: "conversation" | "events";
-  setActiveView: (view: "conversation" | "events") => void;
-  showSettings: boolean;
-  setShowSettings: (show: boolean) => void;
-
-  // Session configuration
-  autoUpdateSession: boolean;
-  setAutoUpdateSession: (update: boolean) => void;
-  sessionConfig: Session;
-  setSessionConfig: (config: Session) => void;
-
-  // Events and prompts
-  events: RealtimeEvent[];
-  addEvent: (event: RealtimeEvent) => void;
-  clearEvents: () => void;
-  prompts: ListPromptsResult["prompts"];
-  setPrompts: (prompts: ListPromptsResult["prompts"]) => void;
-
-  // Conversation
-  conversation: Conversation;
-
-  // Session controls
-  startSession: (deviceId?: string) => Promise<void>;
-  stopSession: () => void;
-  sendTextMessage: (text: string) => void;
-
-  // MCP Manager
-  mcpManager: McpManager;
-
-  // Audio
-  selectedMicrophone: string;
-  setSelectedMicrophone: (deviceId: string) => void;
-  audioDevices: MediaDeviceInfo[];
-  setAudioDevices: (devices: MediaDeviceInfo[]) => void;
-
-  // Realtime connection
-  realtimeConnection: RealtimeConnection;
-
-  // Peer connection
-  peerConnection: RTCPeerConnection | null;
-  setPeerConnection: (connection: RTCPeerConnection | null) => void;
-}
-
 // Create the store
-const store = create<State>()((set, get) => ({
-  // Initialize with default values or from localStorage
-  baseUrl: localStorage.getItem(BASE_URL_STORAGE_KEY) || DEFAULT_BASE_URL,
-  setBaseUrl: (url) => {
-    localStorage.setItem(BASE_URL_STORAGE_KEY, url);
-    set({ baseUrl: url });
-  },
+const store = create(
+  combine({}, (set, get) => ({
+    // Initialize with default values or from localStorage
+    baseUrl: localStorage.getItem(BASE_URL_STORAGE_KEY) || DEFAULT_BASE_URL,
+    setBaseUrl: (url: string) => {
+      localStorage.setItem(BASE_URL_STORAGE_KEY, url);
+      set({ baseUrl: url });
+    },
 
-  model: localStorage.getItem(MODEL_STORAGE_KEY) || DEFAULT_MODEL,
-  setModel: (model) => {
-    localStorage.setItem(MODEL_STORAGE_KEY, model);
-    set({ model });
-  },
+    model: localStorage.getItem(MODEL_STORAGE_KEY) || DEFAULT_MODEL,
+    setModel: (model: string) => {
+      localStorage.setItem(MODEL_STORAGE_KEY, model);
+      set({ model });
+    },
 
-  isSessionActive: false,
-  setIsSessionActive: (active) => set({ isSessionActive: active }),
+    isSessionActive: false,
+    setIsSessionActive: (active: boolean) => set({ isSessionActive: active }),
 
-  dataChannel: null,
-  setDataChannel: (channel) => set({ dataChannel: channel }),
+    dataChannel: null as RTCDataChannel | null,
+    setDataChannel: (channel: RTCDataChannel | null) =>
+      set({ dataChannel: channel }),
 
-  activeView: "conversation",
-  setActiveView: (view) => set({ activeView: view }),
+    activeView: "conversation",
+    setActiveView: (view: "conversation" | "events") =>
+      set({ activeView: view }),
 
-  showSettings: false,
-  setShowSettings: (show) => set({ showSettings: show }),
+    showSettings: false,
+    setShowSettings: (show: boolean) => set({ showSettings: show }),
 
-  autoUpdateSession: true,
-  setAutoUpdateSession: (update) => set({ autoUpdateSession: update }),
+    autoUpdateSession: true,
+    setAutoUpdateSession: (autoUpdateSession: boolean) =>
+      set({ autoUpdateSession }),
 
-  sessionConfig: (() => {
-    try {
-      const saved = localStorage.getItem(SESSION_STORAGE_KEY);
-      if (saved && saved.trim()) {
-        return JSON.parse(saved);
+    sessionConfig: (() => {
+      try {
+        const saved = localStorage.getItem(SESSION_STORAGE_KEY);
+        if (saved && saved.trim()) {
+          return JSON.parse(saved);
+        }
+      } catch (error) {
+        console.error(
+          "Failed to parse session config from localStorage:",
+          error,
+        );
+        // If there's an error, remove the invalid data
+        localStorage.removeItem(SESSION_STORAGE_KEY);
       }
-    } catch (error) {
-      console.error("Failed to parse session config from localStorage:", error);
-      // If there's an error, remove the invalid data
-      localStorage.removeItem(SESSION_STORAGE_KEY);
-    }
-    return DEFAULT_SESSION_CONFIG;
-  })(),
+      return DEFAULT_SESSION_CONFIG;
+    })() as Session,
 
-  setSessionConfig: (config) => {
-    try {
-      localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(config));
-      set({ sessionConfig: config });
-    } catch (error) {
-      console.error("Failed to save session config to localStorage:", error);
-    }
-  },
-
-  events: [],
-  addEvent: (event) => set((state) => ({ events: [event, ...state.events] })),
-  clearEvents: () => set({ events: [] }),
-
-  prompts: [],
-  setPrompts: (prompts) => set({ prompts }),
-
-  conversation: new Conversation(),
-
-  // MCP Manager
-  mcpManager,
-
-  // Audio settings
-  selectedMicrophone:
-    localStorage.getItem(SELECTED_MICROPHONE_STORAGE_KEY) || "",
-  setSelectedMicrophone: (deviceId) => {
-    localStorage.setItem(SELECTED_MICROPHONE_STORAGE_KEY, deviceId);
-    set({ selectedMicrophone: deviceId });
-  },
-  audioDevices: [],
-  setAudioDevices: (devices) => set({ audioDevices: devices }),
-
-  // Realtime connection
-  realtimeConnection: new RealtimeConnection(),
-
-  // Peer connection
-  peerConnection: null,
-  setPeerConnection: (connection) => set({ peerConnection: connection }),
-
-  // Session control functions
-  startSession: async (deviceId) => {
-    const state = get();
-
-    try {
-      // Get an ephemeral key from the Express server
-      let EPHEMERAL_KEY = "cant-be-empty";
-      if (state.baseUrl.includes("api.openai.com")) {
-        const tokenResponse = await fetch("/token");
-        const data = await tokenResponse.json();
-        EPHEMERAL_KEY = data.client_secret.value;
+    setSessionConfig: (config: Session) => {
+      try {
+        localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(config));
+        set({ sessionConfig: config });
+      } catch (error) {
+        console.error("Failed to save session config to localStorage:", error);
       }
+    },
 
-      // Create a peer connection
-      const pc = new RTCPeerConnection();
+    events: [] as RealtimeEvent[],
+    addEvent: (event: RealtimeEvent) =>
+      set((state) => ({ events: [event, ...state.events] })),
+    clearEvents: () => set({ events: [] }),
 
-      // Set up to play remote audio from the model
-      const audioElement = document.createElement("audio");
-      audioElement.autoplay = true;
-      pc.ontrack = (e) => (audioElement.srcObject = e.streams[0]);
+    prompts: [] as ListPromptsResult["prompts"][],
+    setPrompts: (prompts: ListPromptsResult["prompts"][]) => set({ prompts }),
 
-      // Add local audio track for microphone input in the browser
-      const ms = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          deviceId: deviceId || state.selectedMicrophone,
-        },
-      });
-      pc.addTrack(ms.getTracks()[0]);
+    conversation: new Conversation(),
 
-      // Set up data channel for sending and receiving events
-      const dc = pc.createDataChannel(DATA_CHANNEL_LABEL);
-      state.setDataChannel(dc);
-      state.realtimeConnection.setDataChannel(dc);
+    // MCP Manager
+    mcpManager,
 
-      // Start the session using the Session Description Protocol (SDP)
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
+    // Audio settings
+    selectedMicrophone:
+      localStorage.getItem(SELECTED_MICROPHONE_STORAGE_KEY) || "",
+    setSelectedMicrophone: (deviceId: string) => {
+      // TODO: could this be undefined
+      localStorage.setItem(SELECTED_MICROPHONE_STORAGE_KEY, deviceId);
+      set({ selectedMicrophone: deviceId });
+    },
+    audioDevices: [] as string[],
+    setAudioDevices: (devices: string[]) => set({ audioDevices: devices }),
 
-      const sdpResponse = await fetch(
-        `${state.baseUrl}/realtime?model=${state.model}`,
-        {
-          method: "POST",
-          body: offer.sdp,
-          headers: {
-            Authorization: `Bearer ${EPHEMERAL_KEY}`,
-            "Content-Type": "application/sdp",
+    // Realtime connection
+    realtimeConnection: new RealtimeConnection(),
+
+    // Peer connection
+    peerConnection: null as RTCPeerConnection | null,
+    setPeerConnection: (connection: RTCPeerConnection | null) =>
+      set({ peerConnection: connection }),
+
+    // Session control functions
+    startSession: async (deviceId: string) => {
+      const state = get() as ExtractState<typeof useStore>;
+
+      try {
+        // Get an ephemeral key from the Express server
+        let EPHEMERAL_KEY = "cant-be-empty";
+        if (state.baseUrl.includes("api.openai.com")) {
+          const tokenResponse = await fetch("/token");
+          const data = await tokenResponse.json();
+          EPHEMERAL_KEY = data.client_secret.value;
+        }
+
+        // Create a peer connection
+        const pc = new RTCPeerConnection();
+
+        // Set up to play remote audio from the model
+        const audioElement = document.createElement("audio");
+        audioElement.autoplay = true;
+        pc.ontrack = (e) => (audioElement.srcObject = e.streams[0]);
+
+        // Add local audio track for microphone input in the browser
+        const ms = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            deviceId: deviceId || state.selectedMicrophone,
           },
-        },
-      );
-
-      const answer: RTCSessionDescriptionInit = {
-        type: "answer",
-        sdp: await sdpResponse.text(),
-      };
-      await pc.setRemoteDescription(answer);
-
-      state.setPeerConnection(pc);
-
-      // Set up data channel event handlers
-      dc.addEventListener("open", () => {
-        state.setIsSessionActive(true);
-        // state.clearEvents();
-
-        // Auto-update session if enabled
-        // if (state.autoUpdateSession) {
-        //   state.realtimeConnection.sendEvent({
-        //     type: "session.update",
-        //     session: state.sessionConfig,
-        //   });
-        // }
-      });
-    } catch (error) {
-      console.error("Failed to start session:", error);
-      state.setIsSessionActive(false);
-    }
-  },
-
-  stopSession: () => {
-    const state = get();
-
-    try {
-      if (state.dataChannel) {
-        state.dataChannel.close();
-      }
-
-      if (state.peerConnection) {
-        state.peerConnection.getSenders().forEach((sender) => {
-          if (sender.track) {
-            sender.track.stop();
-          }
         });
+        pc.addTrack(ms.getTracks()[0]);
 
-        state.peerConnection.close();
-      }
-    } catch (error) {
-      console.error("Error stopping session:", error);
-    } finally {
-      state.setIsSessionActive(false);
-      state.setDataChannel(null);
-      state.setPeerConnection(null);
-    }
-  },
+        // Set up data channel for sending and receiving events
+        const dc = pc.createDataChannel(DATA_CHANNEL_LABEL);
+        state.setDataChannel(dc);
+        state.realtimeConnection.setDataChannel(dc);
 
-  sendTextMessage: (text) => {
-    const state = get();
+        // Start the session using the Session Description Protocol (SDP)
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
 
-    const event: RealtimeClientEvent = {
-      type: "conversation.item.create",
-      item: {
-        type: "message",
-        role: "user",
-        content: [
+        const sdpResponse = await fetch(
+          `${state.baseUrl}/realtime?model=${state.model}`,
           {
-            type: "input_text",
-            text: text,
+            method: "POST",
+            body: offer.sdp,
+            headers: {
+              Authorization: `Bearer ${EPHEMERAL_KEY}`,
+              "Content-Type": "application/sdp",
+            },
           },
-        ],
-      },
-    };
+        );
 
-    state.realtimeConnection.sendEvent(event);
-    state.realtimeConnection.sendEvent({ type: "response.create" });
-  },
-}));
+        const answer: RTCSessionDescriptionInit = {
+          type: "answer",
+          sdp: await sdpResponse.text(),
+        };
+        await pc.setRemoteDescription(answer);
+
+        state.setPeerConnection(pc);
+
+        // Set up data channel event handlers
+        dc.addEventListener("open", () => {
+          state.setIsSessionActive(true);
+          // state.clearEvents();
+
+          // Auto-update session if enabled
+          // if (state.autoUpdateSession) {
+          //   state.realtimeConnection.sendEvent({
+          //     type: "session.update",
+          //     session: state.sessionConfig,
+          //   });
+          // }
+        });
+      } catch (error) {
+        console.error("Failed to start session:", error);
+        state.setIsSessionActive(false);
+      }
+    },
+
+    stopSession: () => {
+      const state = get() as ExtractState<typeof useStore>;
+
+      try {
+        if (state.dataChannel) {
+          state.dataChannel.close();
+        }
+
+        if (state.peerConnection) {
+          state.peerConnection.getSenders().forEach((sender) => {
+            if (sender.track) {
+              sender.track.stop();
+            }
+          });
+
+          state.peerConnection.close();
+        }
+      } catch (error) {
+        console.error("Error stopping session:", error);
+      } finally {
+        state.setIsSessionActive(false);
+        state.setDataChannel(null);
+        state.setPeerConnection(null);
+      }
+    },
+
+    sendTextMessage: (text: string) => {
+      const state = get() as ExtractState<typeof useStore>;
+
+      const event: RealtimeClientEvent = {
+        type: "conversation.item.create",
+        item: {
+          type: "message",
+          role: "user",
+          content: [
+            {
+              type: "input_text",
+              text: text,
+            },
+          ],
+        },
+      };
+
+      state.realtimeConnection.sendEvent(event);
+      state.realtimeConnection.sendEvent({ type: "response.create" });
+    },
+  })),
+);
 
 const useStore = createSelectors(store);
 
