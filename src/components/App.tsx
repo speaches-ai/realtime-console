@@ -18,10 +18,30 @@ import {
   ResponseTextDeltaEvent,
 } from "openai/resources/beta/realtime/realtime";
 
-// const SAMPLE_EVENTS = Array.from(
-//   { length: 30 },
-//   () => ({ type: "response.cancel" }) as RealtimeEvent,
-// );
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
+
+const transport = new SSEClientTransport(new URL("http://0.0.0.0:3001/sse"));
+const mcpClient = new Client(
+  {
+    name: "realtime-console",
+    version: "0.1.0",
+  },
+  // { capabilities: {} },
+  {
+    capabilities: {
+      prompts: true,
+      tools: true,
+      resources: {
+        subscribe: true,
+      },
+      logging: true,
+    },
+  },
+);
+
+type EventListener = (event: RealtimeServerEvent) => void;
+type AsyncEventListener = (event: RealtimeServerEvent) => Promise<void>;
 
 class RealtimeConnection {
   dataChannel: RTCDataChannel | null;
@@ -65,10 +85,7 @@ class RealtimeConnection {
     this.dataChannel.send(JSON.stringify(event));
   }
 
-  addEventListener(
-    type: string,
-    listener: (event: RealtimeServerEvent) => void,
-  ) {
+  addEventListener(type: string, listener: AsyncEventListener | EventListener) {
     if (!this.eventListeners.has(type)) {
       this.eventListeners.set(type, listener);
     } else {
@@ -95,9 +112,15 @@ const eventHandlers = {
   ) => {
     conversation.addDelta(event.item_id, event.delta);
   },
-  "response.output_item.done": (event: ResponseOutputItemDoneEvent) => {
+  "response.output_item.done": async (event: ResponseOutputItemDoneEvent) => {
     const item = conversationItemFromOpenAI(event.item);
     conversation.upsertItem(item);
+    if (item.type === "function_call") {
+      await mcpClient.callTool({
+        name: item.name,
+        arguments: JSON.parse(item.arguments),
+      });
+    }
   },
 };
 
@@ -113,6 +136,7 @@ export default function App() {
   const [dataChannel, setDataChannel] = useState<RTCDataChannel | null>(null);
   const peerConnection = useRef<RTCPeerConnection>(null);
   const audioElement = useRef<HTMLAudioElement | null>(null);
+  // const [triedToConnect, setTriedToConnect] = useState(false);
 
   async function startSession() {
     // Get an ephemeral key from the Express server
@@ -215,6 +239,17 @@ export default function App() {
     sendClientEvent({ type: "response.create" });
   }
 
+  // useEffect(() => {
+  //   async function connect() {
+  //     // if (!triedToConnect) {
+  //     //   await mcpClient.connect(transport);
+  //     //   setTriedToConnect(true);
+  //     // }
+  //   }
+  //   if (!triedToConnect) {
+  //     connect();
+  //   }
+  // }, [triedToConnect]);
   // Attach event listeners to the data channel when a new one is created
   useEffect(() => {
     if (dataChannel) {
@@ -242,8 +277,8 @@ export default function App() {
       <main className="flex flex-1 overflow-y-scroll">
         <section className="flex flex-col flex-1">
           <section className="flex-1 px-4 overflow-y-auto">
-            <ConversationView 
-              conversation={conversation} 
+            <ConversationView
+              conversation={conversation}
               onFunctionOutput={(callId, output) => {
                 // Send function call output event
                 sendClientEvent({
@@ -251,10 +286,10 @@ export default function App() {
                   item: {
                     type: "function_call_output",
                     call_id: callId,
-                    output: output
-                  }
+                    output: output,
+                  },
                 });
-                
+
                 // Trigger a new response
                 sendClientEvent({ type: "response.create" });
               }}
@@ -277,7 +312,11 @@ export default function App() {
             model={model}
             setModel={setModel}
           />
-          <SessionConfiguration sendEvent={sendClientEvent} />
+          <SessionConfiguration
+            sendEvent={sendClientEvent}
+            mcpClient={mcpClient}
+            transport={transport}
+          />
         </section>
       </main>
     </div>

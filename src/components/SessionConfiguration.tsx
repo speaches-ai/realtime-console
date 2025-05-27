@@ -3,6 +3,12 @@ import { useState, useEffect } from "react";
 import Button from "./Button";
 import { SliderInput } from "./shared";
 import { RealtimeClientEvent } from "openai/resources/beta/realtime/realtime.mjs";
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
+import {
+  ListToolsRequest,
+  ListToolsResult,
+} from "@modelcontextprotocol/sdk/types.js";
 
 type Modality = "text" | "audio";
 
@@ -22,7 +28,7 @@ type TurnDetectionConfig = {
 type Tool = {
   type: "function";
   name: string;
-  description: string;
+  description?: string;
   parameters: Record<string, any>;
 };
 
@@ -41,12 +47,6 @@ type Session = {
 
 type Voice = {
   voice_id: string;
-};
-
-const baseUrl = "http://localhost:8000/v1";
-
-type SessionConfigurationProps = {
-  sendEvent: (event: RealtimeClientEvent) => void;
 };
 
 const DEFAULT_SESSION: Session = {
@@ -85,30 +85,51 @@ const DEFAULT_SESSION: Session = {
         required: ["location", "unit"],
       },
     },
+    {
+      type: "function",
+      name: "calculate_bmi",
+      description: "Calculate BMI given weight in kg and height in meters",
+      parameters: {
+        type: "object",
+        properties: {
+          weight_kg: {
+            title: "Weight Kg",
+            type: "number",
+          },
+          height_m: {
+            title: "Height M",
+            type: "number",
+          },
+        },
+        required: ["weight_kg", "height_m"],
+        title: "calculate_bmiArguments",
+      },
+    },
   ],
   temperature: 0.8, // Range: 0.6-1.2
   max_response_output_tokens: "inf",
 };
+const baseUrl = "http://localhost:8000/v1";
 
+type SessionConfigurationProps = {
+  sendEvent: (event: RealtimeClientEvent) => void;
+  mcpClient: Client;
+  transport: SSEClientTransport;
+};
+
+function mcpToolsToOpenAI(tools: ListToolsResult): Tool[] {
+  return tools.tools.map((tool) => ({
+    type: "function",
+    name: tool.name,
+    description: tool.description,
+    parameters: tool.inputSchema,
+  }));
+}
 export function SessionConfiguration(props: SessionConfigurationProps) {
   const [sessionConfig, setSessionConfig] = useState<Session>(DEFAULT_SESSION);
   const [voices, setVoices] = useState<string[]>([]);
   const [transcriptionModels, setTranscriptionModels] = useState<string[]>([]);
-
-  useEffect(() => {
-    async function fetchVoices() {
-      const res = await fetch(baseUrl + "/audio/speech/voices");
-      const data: Voice[] = await res.json();
-      setVoices(data.map((voice) => voice.voice_id));
-    }
-    async function fetchTranscriptionModels() {
-      const res = await fetch(baseUrl + "/models");
-      const data = await res.json();
-      setTranscriptionModels(data.data.map((model) => model.id));
-    }
-    fetchVoices();
-    fetchTranscriptionModels();
-  }, []);
+  const [triedToConnect, setTriedToConnect] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -122,6 +143,33 @@ export function SessionConfiguration(props: SessionConfigurationProps) {
     }));
   };
 
+  useEffect(() => {
+    async function fetchVoices() {
+      const res = await fetch(baseUrl + "/audio/speech/voices");
+      const data: Voice[] = await res.json();
+      setVoices(data.map((voice) => voice.voice_id));
+    }
+    async function fetchTranscriptionModels() {
+      const res = await fetch(baseUrl + "/models");
+      const data = await res.json();
+      setTranscriptionModels(data.data.map((model) => model.id));
+    }
+    async function fetchTools() {
+      if (triedToConnect) {
+        return;
+      }
+      await props.mcpClient.connect(props.transport);
+      setTriedToConnect(true);
+      const tools = await props.mcpClient.listTools();
+      console.log("Available tools:", tools);
+      const openaiTools = mcpToolsToOpenAI(tools);
+      handleChange("tools", openaiTools);
+    }
+    fetchVoices();
+    fetchTranscriptionModels();
+
+    fetchTools();
+  }, []);
   return (
     <form onSubmit={handleSubmit} className="space-y-4 p-4">
       <div>

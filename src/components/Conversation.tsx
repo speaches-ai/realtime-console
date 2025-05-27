@@ -255,7 +255,7 @@ export function ConversationView(props: {
   conversation: Conversation;
   onFunctionOutput?: (callId: string, output: string) => void;
 }) {
-  console.log(Array.from(props.conversation.items.values()));
+  // console.log(Array.from(props.conversation.items.values()));
   return (
     <div>
       {Array.from(props.conversation.items.values()).map((item) => {
@@ -263,9 +263,10 @@ export function ConversationView(props: {
           return <MessageItem key={item.id} item={item} />;
         } else if (item.type === "function_call") {
           const output = Array.from(props.conversation.items.values()).find(
-            (i) => i.type === "function_call_output" && i.call_id === item.call_id
+            (i) =>
+              i.type === "function_call_output" && i.call_id === item.call_id,
           ) as ConversationItemFunctionCallOutput | undefined;
-          
+
           return (
             <FunctionCallItem
               key={item.id}
