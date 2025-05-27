@@ -59,7 +59,9 @@ export function Settings() {
         {/* Content area */}
         <div className="flex-1 p-6 overflow-y-auto">
           {activeTab === "connection" && <ConnectionSettings />}
-          {activeTab === "mcp-servers" && <McpServerList mcpManager={mcpManager} />}
+          {activeTab === "mcp-servers" && (
+            <McpServerList mcpManager={mcpManager} />
+          )}
         </div>
       </div>
     </div>

@@ -4,7 +4,13 @@ import Button from "./Button";
 import useAppStore from "../store";
 
 function SessionStopped() {
-  const { startSession, audioDevices, setAudioDevices, selectedMicrophone, setSelectedMicrophone } = useAppStore();
+  const {
+    startSession,
+    audioDevices,
+    setAudioDevices,
+    selectedMicrophone,
+    setSelectedMicrophone,
+  } = useAppStore();
   const [isActivating, setIsActivating] = useState(false);
 
   useEffect(() => {
@@ -113,11 +119,7 @@ export default function SessionControls() {
 
   return (
     <div className="flex gap-4 border-t-2 border-gray-200 h-full rounded-md">
-      {isSessionActive ? (
-        <SessionActive />
-      ) : (
-        <SessionStopped />
-      )}
+      {isSessionActive ? <SessionActive /> : <SessionStopped />}
     </div>
   );
 }
