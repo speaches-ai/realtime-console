@@ -31,6 +31,7 @@ export function SessionConfiguration() {
     prompts,
     setPrompts,
     realtimeConnection,
+    baseUrl,
   } = useAppStore();
 
   const [voices, setVoices] = useState<string[]>([]);
@@ -74,7 +75,7 @@ export function SessionConfiguration() {
     if (voices.length === 0 && !isLoadingVoices) {
       setIsLoadingVoices(true);
       try {
-        const res = await fetch("http://localhost:8000/v1/audio/speech/voices");
+        const res = await fetch(`${baseUrl}/audio/speech/voices`);
         const data = await res.json();
         setVoices(data.map((voice: { voice_id: string }) => voice.voice_id));
       } catch (error) {
@@ -89,7 +90,7 @@ export function SessionConfiguration() {
     if (transcriptionModels.length === 0 && !isLoadingTranscriptionModels) {
       setIsLoadingTranscriptionModels(true);
       try {
-        const res = await fetch("http://localhost:8000/v1/models");
+        const res = await fetch(`${baseUrl}/models`);
         const data = await res.json();
         setTranscriptionModels(
           data.data.map((model: { id: string }) => model.id),
