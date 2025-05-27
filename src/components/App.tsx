@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import Button from "./Button";
 import EventLog from "./EventLog";
 import SessionControls from "./SessionControls";
 import { SessionConfiguration } from "./SessionConfiguration";
@@ -158,6 +159,7 @@ export default function App() {
   const [isSessionActive, setIsSessionActive] = useState(false);
   const [events, setEvents] = useState<RealtimeEvent[]>([]);
   const [dataChannel, setDataChannel] = useState<RTCDataChannel | null>(null);
+  const [activeView, setActiveView] = useState<'conversation' | 'events'>('conversation');
   const [autoUpdateSession, setAutoUpdateSession] = useState(true);
   const [prompts, setPrompts] = useState<ListPromptsResult["prompts"]>([]);
   const [sessionConfig, setSessionConfig] = useState<Session>(() => {
@@ -389,24 +391,34 @@ export default function App() {
       <main className="flex flex-1 overflow-y-scroll">
         <section className="flex flex-col flex-1">
           <section className="flex-1 px-4 overflow-y-auto">
-            <ConversationView
-              conversation={conversation}
-              onFunctionOutput={(callId, output) => {
-                // Send function call output event
-                sendClientEvent({
-                  type: "conversation.item.create",
-                  item: {
-                    type: "function_call_output",
-                    call_id: callId,
-                    output: output,
-                  },
-                });
+            <div className="flex justify-end mb-4">
+              <Button
+                onClick={() => setActiveView(activeView === 'conversation' ? 'events' : 'conversation')}
+              >
+                {activeView === 'conversation' ? 'Show Events' : 'Show Conversation'}
+              </Button>
+            </div>
+            {activeView === 'conversation' ? (
+              <ConversationView
+                conversation={conversation}
+                onFunctionOutput={(callId, output) => {
+                  // Send function call output event
+                  sendClientEvent({
+                    type: "conversation.item.create",
+                    item: {
+                      type: "function_call_output",
+                      call_id: callId,
+                      output: output,
+                    },
+                  });
 
-                // Trigger a new response
-                sendClientEvent({ type: "response.create" });
-              }}
-            />
-            <EventLog events={events} />
+                  // Trigger a new response
+                  sendClientEvent({ type: "response.create" });
+                }}
+              />
+            ) : (
+              <EventLog events={events} />
+            )}
           </section>
           <section className="h-32 p-4">
             <SessionControls
