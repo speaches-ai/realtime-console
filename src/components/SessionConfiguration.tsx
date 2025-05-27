@@ -96,7 +96,7 @@ export function SessionConfiguration(props: SessionConfigurationProps) {
       setTranscriptionModels(data.data.map((model) => model.id));
     }
     async function fetchTools() {
-      await sleep(1000);
+      await sleep(400);
       const tools = await props.mcpManager.listTools();
       console.log("Available tools:", tools);
       const openaiTools = mcpToolsToOpenAI(tools);
