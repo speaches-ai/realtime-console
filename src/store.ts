@@ -1,4 +1,4 @@
-import { create } from "zustand";
+import { create, StoreApi, useStore } from "zustand";
 import { RealtimeEvent } from "./types";
 import { ListPromptsResult } from "@modelcontextprotocol/sdk/types.js";
 import { McpManager } from "./McpServerManager";
@@ -123,6 +123,23 @@ class RealtimeConnection {
   }
 }
 
+type WithSelectors<S> = S extends { getState: () => infer T }
+  ? S & { use: { [K in keyof T]: () => T[K] } }
+  : never;
+
+export const createSelectors = <S extends StoreApi<object>>(_store: S) => {
+  const store = _store as WithSelectors<typeof _store>;
+  store.use = {};
+  for (const k of Object.keys(store.getState())) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (store.use as any)[k] = () =>
+      // eslint-disable-next-line react-hooks/rules-of-hooks
+      useStore(_store, (s) => s[k as keyof typeof s]);
+  }
+
+  return store;
+};
+
 // Define the store state
 interface AppState {
   // Connection settings
@@ -183,7 +200,7 @@ interface AppState {
 }
 
 // Create the store
-const useAppStore = create<AppState>((set, get) => ({
+const appStore = create<AppState>((set, get) => ({
   // Initialize with default values or from localStorage
   baseUrl: localStorage.getItem(BASE_URL_STORAGE_KEY) || DEFAULT_BASE_URL,
   setBaseUrl: (url) => {
@@ -404,5 +421,7 @@ const useAppStore = create<AppState>((set, get) => ({
     state.sendClientEvent({ type: "response.create" });
   },
 }));
+
+const useAppStore = createSelectors(appStore);
 
 export default useAppStore;
