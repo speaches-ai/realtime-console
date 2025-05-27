@@ -95,7 +95,7 @@ export default function App() {
 
   useEffect(() => {
     return realtimeConnection.addEventListener(
-      "output_item.done",
+      "response.output_item.done",
       // @ts-expect-error
       async (event: ResponseOutputItemDoneEvent) => {
         const item = conversationItemFromOpenAI(event.item);
