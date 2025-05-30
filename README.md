@@ -5,7 +5,7 @@ This is my version of [OpenAI's Realtime Console](https://github.com/openai/open
 - MCP support
 - Keyboard shortcuts
 - Conversation persistence
-- WebRTC data channel message brotli compression
+- WebRTC data channel message fragmentation
 - More comprehensive session configuration
 - Few other things I don't remember at the top of my head...
 
