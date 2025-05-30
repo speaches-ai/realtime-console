@@ -93,11 +93,21 @@ class RealtimeConnection {
   private anyEventListeners: Set<
     (event: RealtimeServerEvent) => void | Promise<void>
   >;
+  // For handling fragmented messages
+  private messageFragments: Map<
+    string,
+    {
+      fragments: string[];
+      totalFragments: number;
+      receivedFragments: number;
+    }
+  >;
 
   constructor() {
     this.dataChannel = null;
     this.eventListeners = new Map();
     this.anyEventListeners = new Set();
+    this.messageFragments = new Map();
     this.setDataChannel = this.setDataChannel.bind(this);
     this.sendEvent = this.sendEvent.bind(this);
     this.addEventListener = this.addEventListener.bind(this);
@@ -123,20 +133,99 @@ class RealtimeConnection {
     dataChannel.onbufferedamountlow = (event) => {
       console.log("Data channel buffered amount low", event);
     };
+
     // Set up message handler
     dataChannel.addEventListener("message", (message) => {
       try {
-        const event = JSON.parse(message.data) as RealtimeServerEvent;
-        if (this.eventListeners.has(event.type)) {
-          this.eventListeners.get(event.type)!(event);
-        }
-        for (const listener of this.anyEventListeners) {
-          listener(event);
+        const data = JSON.parse(message.data);
+
+        // Handle the new message framing protocol
+        if (data.type === "full_message") {
+          console.log(`Received full message with ID: ${data.id}`);
+          // Full message - decode and process
+          const decodedMessage = atob(data.data);
+          const event = JSON.parse(decodedMessage) as RealtimeServerEvent;
+          console.log(`Decoded full message event type: ${event.type}`);
+          this.processEvent(event);
+        } else if (data.type === "partial_message") {
+          // Handle partial message fragments
+          const messageId = data.id;
+          const fragmentIndex = data.fragment_index;
+          const totalFragments = data.total_fragments;
+
+          console.log(
+            `Received fragment ${fragmentIndex + 1}/${totalFragments} for message ID: ${messageId}`,
+          );
+
+          // Initialize fragment tracking if this is the first fragment we've seen
+          if (!this.messageFragments.has(messageId)) {
+            console.log(
+              `Creating new fragment tracker for message ID: ${messageId}`,
+            );
+            this.messageFragments.set(messageId, {
+              fragments: new Array(totalFragments).fill(""),
+              totalFragments,
+              receivedFragments: 0,
+            });
+          }
+
+          const fragmentInfo = this.messageFragments.get(messageId)!;
+          // Store this fragment
+          fragmentInfo.fragments[fragmentIndex] = data.data;
+          fragmentInfo.receivedFragments++;
+
+          console.log(
+            `Stored fragment ${fragmentIndex + 1}/${totalFragments}. Have ${fragmentInfo.receivedFragments}/${totalFragments} fragments.`,
+          );
+
+          // Check if we have all fragments
+          if (fragmentInfo.receivedFragments === totalFragments) {
+            console.log(
+              `All ${totalFragments} fragments received for message ID: ${messageId}. Reassembling...`,
+            );
+            // Combine all fragments and decode
+            const combinedData = fragmentInfo.fragments.join("");
+            const decodedMessage = atob(combinedData);
+
+            try {
+              const event = JSON.parse(decodedMessage) as RealtimeServerEvent;
+              console.log(
+                `Successfully reassembled message. Event type: ${event.type}`,
+              );
+              this.processEvent(event);
+            } catch (error) {
+              console.error(
+                `Failed to parse reassembled message for ID ${messageId}:`,
+                error,
+              );
+            }
+
+            // Clean up the fragments
+            this.messageFragments.delete(messageId);
+            console.log(
+              `Cleaned up fragment tracker for message ID: ${messageId}`,
+            );
+          }
+        } else {
+          // Legacy format - handle directly
+          console.log(`Received legacy format message with type: ${data.type}`);
+          const event = data as RealtimeServerEvent;
+          this.processEvent(event);
         }
       } catch (error) {
         console.error("Failed to parse message data:", error);
       }
     });
+  }
+
+  // Helper method to process events once they're assembled
+  private processEvent(event: RealtimeServerEvent) {
+    if (this.eventListeners.has(event.type)) {
+      this.eventListeners.get(event.type)!(event);
+    }
+    for (const listener of this.anyEventListeners) {
+      listener(event);
+    }
   }
 
   sendEvent(event: RealtimeClientEvent) {
